@@ -1,9 +1,8 @@
-name: 🚀 Deploy Production
+name: 🚀 Deploy Staging
 on:
     push:
         branches:
-            - main
-    workflow_dispatch:
+            - stage
 
 concurrency:
     group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -14,96 +13,13 @@ permissions:
     contents: write
 
 jobs:
-    deploy-doc:
-        name: 🚀 Deploy (doc)
-        runs-on: ubuntu-latest
-        timeout-minutes: 5
-        environment:
-            name: prod
-            url: https://crm.haba.services
-
-        env:
-          PRODUCTION_REMOTE: https://git:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}
-
-        steps:
-            - name: 📥 Checkout repo
-              uses: actions/checkout@v4
-
-            - name: ⚙️ Setup node
-              uses: actions/setup-node@v4
-              with:
-                  node-version: 22
-                  cache: npm
-
-            - name: ⚙️ Setup git
-              run: |
-                git remote set-url origin https://git:${{ secrets.GITHUB_TOKEN }}@github.com/${GITHUB_REPOSITORY}
-                git config --global user.email support+actions@github.com
-                git config --global user.name github-actions-bot
-
-            - name: 📥 Download deps
-              run: make doc-install
-
-            - name: 🔨 Build Registry
-              run: make registry-build
-
-            - name: 🔨 Build Documentation
-              run: make doc-build
-
-            - name: 📡 Deploy Registry
-              run: make registry-deploy
-
-            - name: 📡 Deploy Documentation
-              run: make doc-deploy
-
-    deploy-demo:
-        name: 🚀 Deploy (demo)
-        runs-on: ubuntu-latest
-        timeout-minutes: 10
-        environment:
-            name: prod
-
-        env:
-            VITE_IS_DEMO: true
-            VITE_INBOUND_EMAIL: ${{ vars.VITE_INBOUND_EMAIL }}
-            PRODUCTION_REMOTE: https://git:${{ secrets.DEPLOY_TOKEN || secrets.GITHUB_TOKEN }}@github.com/${{ vars.DEMO_DEPLOY_REPOSITORY }}
-
-        steps:
-            - name: 📥 Checkout repo
-              uses: actions/checkout@v4
-
-            - name: ⚙️ Setup node
-              uses: actions/setup-node@v4
-              with:
-                  node-version: 22
-                  cache: npm
-
-            - name: ⚙️ Setup git
-              run: |
-                  echo Deploying to pages to ${{ vars.DEMO_DEPLOY_REPOSITORY }}
-                  git remote set-url origin https://git:${{ secrets.DEPLOY_TOKEN || secrets.GITHUB_TOKEN }}@github.com/${{ vars.DEMO_DEPLOY_REPOSITORY }}
-                  git remote add production $PRODUCTION_REMOTE
-                  git config --global user.email support+actions@github.com
-                  git config --global user.name github-actions-bot
-
-            - name: 📥 Download deps
-              run: npm ci
-
-            - name: 🔨 Build
-              run: npm run build:demo
-
-            - name: 📡 Deploy GitHub pages
-              run: npx gh-pages --remote production -d dist -b ${{ vars.DEPLOY_BRANCH || 'gh-pages' }}
-              env:
-                  GITHUB_TOKEN: ${{ secrets.DEPLOY_TOKEN || secrets.GITHUB_TOKEN }}
-
     deploy-supabase:
-        name: 🚀 Deploy (production supabase)
+        name: 🚀 Deploy (staging supabase)
         runs-on: ubuntu-latest
         timeout-minutes: 10
         environment:
-            name: prod
-            url: https://crm.haba.services
+            name: stage
+            url: https://stage-crm.haba.services
 
         env:
             SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
@@ -112,9 +28,9 @@ jobs:
             VITE_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
             VITE_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
             IS_SUPABASE_CONFIGURED: ${{ secrets.SUPABASE_ACCESS_TOKEN && secrets.SUPABASE_DB_PASSWORD && secrets.SUPABASE_PROJECT_ID && secrets.SUPABASE_URL && secrets.SUPABASE_ANON_KEY }}
-            VITE_IS_DEMO: ${{ vars.VITE_IS_DEMO }}
+            VITE_IS_DEMO: ${{ vars.VITE_IS_DEMO || 'false' }}
             VITE_INBOUND_EMAIL: ${{ vars.VITE_INBOUND_EMAIL }}
-            PRODUCTION_REMOTE: https://git:${{ secrets.DEPLOY_TOKEN || secrets.GITHUB_TOKEN }}@github.com/${{ vars.DEPLOY_REPOSITORY }}
+            PRODUCTION_REMOTE: https://git:${{ secrets.DEPLOY_TOKEN || secrets.GITHUB_TOKEN }}@github.com/${{ vars.DEPLOY_REPOSITORY || github.repository }}
             POSTMARK_WEBHOOK_USER: ${{secrets.POSTMARK_WEBHOOK_USER}}
             POSTMARK_WEBHOOK_PASSWORD: ${{secrets.POSTMARK_WEBHOOK_PASSWORD}}
             POSTMARK_WEBHOOK_AUTHORIZED_IPS: ${{secrets.POSTMARK_WEBHOOK_AUTHORIZED_IPS}}
@@ -131,8 +47,9 @@ jobs:
 
             - name: ⚙️ Setup git
               run: |
-                  echo Deploying to pages to ${{ vars.DEPLOY_REPOSITORY }}
-                  git remote set-url origin https://git:${{ secrets.DEPLOY_TOKEN || secrets.GITHUB_TOKEN }}@github.com/${{ vars.DEPLOY_REPOSITORY }}
+                  echo "Deploying staging to ${{ vars.DEPLOY_REPOSITORY || github.repository }}"
+                  echo "Branch: ${{ vars.DEPLOY_BRANCH || 'gh-pages-staging' }}"
+                  git remote set-url origin https://git:${{ secrets.DEPLOY_TOKEN || secrets.GITHUB_TOKEN }}@github.com/${{ vars.DEPLOY_REPOSITORY || github.repository }}
                   git remote add production $PRODUCTION_REMOTE
                   git config --global user.email support+actions@github.com
                   git config --global user.name github-actions-bot
@@ -155,7 +72,7 @@ jobs:
               run: npx supabase db push
 
             - if: ${{ env.IS_SUPABASE_CONFIGURED && env.POSTMARK_WEBHOOK_USER && env.POSTMARK_WEBHOOK_PASSWORD && env.POSTMARK_WEBHOOK_AUTHORIZED_IPS }}
-              name: 📡 Push supabase postmark webhook user secret
+              name: 📡 Push supabase postmark webhook secrets
               run: |
                   npx supabase secrets set POSTMARK_WEBHOOK_USER=${{ env.POSTMARK_WEBHOOK_USER }}
                   npx supabase secrets set POSTMARK_WEBHOOK_PASSWORD=${{ env.POSTMARK_WEBHOOK_PASSWORD }}
@@ -190,11 +107,11 @@ jobs:
               run: echo ':warning:POSTMARK_WEBHOOK_USER secret is missing' >> $GITHUB_STEP_SUMMARY
 
             - if: ${{ !env.POSTMARK_WEBHOOK_PASSWORD }}
-              name: Check POSTMARK_WEBHOOK_USER secret
+              name: Check POSTMARK_WEBHOOK_PASSWORD secret
               run: echo ':warning:POSTMARK_WEBHOOK_PASSWORD secret is missing' >> $GITHUB_STEP_SUMMARY
 
             - if: ${{ !env.POSTMARK_WEBHOOK_AUTHORIZED_IPS }}
-              name: Check POSTMARK_WEBHOOK_USER secret
+              name: Check POSTMARK_WEBHOOK_AUTHORIZED_IPS secret
               run: echo ':warning:POSTMARK_WEBHOOK_AUTHORIZED_IPS secret is missing' >> $GITHUB_STEP_SUMMARY
 
             - if: ${{ !env.IS_SUPABASE_CONFIGURED }}
@@ -202,6 +119,6 @@ jobs:
               run: echo ':warning:Supabase deployment skipped' >> $GITHUB_STEP_SUMMARY
 
             - name: 📡 Deploy GitHub pages
-              run: npx gh-pages --remote production -d dist -b ${{ vars.DEPLOY_BRANCH || 'gh-pages' }}
+              run: npx gh-pages --remote production -d dist -b ${{ vars.DEPLOY_BRANCH || 'gh-pages-staging' }}
               env:
                   GITHUB_TOKEN: ${{ secrets.DEPLOY_TOKEN || secrets.GITHUB_TOKEN }}
