@@ -148,7 +148,7 @@ jobs:
 
             - if: ${{ env.IS_SUPABASE_CONFIGURED }}
               name: 🔗 Supabase Link
-              run: npx supabase link --project-ref $SUPABASE_PROJECT_ID
+              run: npx supabase link --project-ref $SUPABASE_PROJECT_ID --password $SUPABASE_DB_PASSWORD
 
             - if: ${{ env.IS_SUPABASE_CONFIGURED }}
               name: 📡 Push supabase migrations
