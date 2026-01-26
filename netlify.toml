@@ -1,0 +1,42 @@
+# Build settings
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+  # Use Node 22 to match existing CI/CD
+  environment = { NODE_VERSION = "22" }
+
+# Production deployment (main branch)
+[context.production]
+  command = "npm run build"
+
+  # Add production environment variables in Netlify UI:
+  # - SUPABASE_URL
+  # - SUPABASE_ANON_KEY
+  # - VITE_INBOUND_EMAIL (optional)
+
+# Branch deployment for staging (stage branch)
+[context.stage]
+  command = "npm run build"
+
+  # Staging uses separate Supabase project
+  # Configure staging-specific env vars in Netlify UI:
+  # - SUPABASE_URL (staging project URL)
+  # - SUPABASE_ANON_KEY (staging anonymous key)
+
+# Preview deployments for all other branches
+[context.branch-deploy]
+  command = "npm run build"
+
+# Headers for SPA routing
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+  force = false
+
+  # Security headers
+  [redirects.headers]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
