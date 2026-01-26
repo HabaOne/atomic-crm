@@ -7,6 +7,8 @@ import type { Sale } from "../types";
 export function SalesInputs() {
   const { identity } = useGetIdentity();
   const record = useRecordContext<Sale>();
+  const isCreating = !record?.id;
+
   return (
     <div className="space-y-4 w-full">
       <TextInput source="first_name" validate={required()} helperText={false} />
@@ -16,6 +18,14 @@ export function SalesInputs() {
         validate={[required(), email()]}
         helperText={false}
       />
+      {isCreating && (
+        <TextInput
+          source="password"
+          type="password"
+          validate={required()}
+          helperText="Leave blank to send invitation email. Provide password for testing."
+        />
+      )}
       <BooleanInput
         source="administrator"
         readOnly={record?.id === identity?.id}

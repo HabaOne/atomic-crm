@@ -8,8 +8,10 @@ import type {
   Tag,
   Task,
 } from "../../../types";
+import type { Organization } from "../../../root/OrganizationContext";
 
 export interface Db {
+  organizations: Organization[];
   companies: Required<Company>[];
   contacts: Required<Contact>[];
   contact_notes: ContactNote[];

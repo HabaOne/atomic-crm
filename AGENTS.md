@@ -4,6 +4,8 @@
 
 Atomic CRM is a full-featured CRM built with React, shadcn-admin-kit, and Supabase. It provides contact management, task tracking, notes, email capture, and deal management with a Kanban board.
 
+**Multi-Tenancy**: The CRM supports multiple isolated organizations with Row-Level Security (RLS) for data isolation. Each user belongs to one organization and can only access their organization's data.
+
 ## Development Commands
 
 ### Setup
@@ -20,6 +22,8 @@ make start-demo       # Start full-stack with FakeRest data provider
 make test             # Run unit tests (vitest)
 make typecheck        # Run TypeScript type checking
 make lint             # Run ESLint and Prettier checks
+npm run test:e2e      # Run E2E tests (Playwright)
+npm run test:e2e:ui   # Run E2E tests in interactive UI mode
 ```
 
 ### Building
@@ -76,9 +80,9 @@ src/
 │   │   ├── misc/           # Shared utilities
 │   │   ├── notes/          # Note management
 │   │   ├── providers/      # Data providers (Supabase + FakeRest)
-│   │   ├── root/           # Root CRM component
+│   │   ├── root/           # Root CRM component (includes OrganizationContext)
 │   │   ├── sales/          # Sales team management
-│   │   ├── settings/       # Settings page
+│   │   ├── settings/       # Settings page (includes OrganizationSettingsPage)
 │   │   ├── simple-list/    # List components
 │   │   ├── tags/           # Tag management
 │   │   └── tasks/          # Task management
@@ -141,6 +145,64 @@ When using FakeRest, database views are emulated in the frontend. Test data gene
 
 List filters follow the `ra-data-postgrest` convention with operator concatenation: `field_name@operator` (e.g., `first_name@eq`). The FakeRest adapter maps these to FakeRest syntax at runtime.
 
+#### Multi-Tenancy Architecture
+
+The CRM implements **RLS-based multi-tenancy** for secure data isolation between organizations:
+
+**Core Concepts:**
+- Each user belongs to exactly one organization
+- All data tables include an `organization_id` column with indexed foreign keys
+- Row-Level Security (RLS) policies enforce tenant isolation at the database level
+- Triggers automatically populate `organization_id` on INSERT operations
+
+**Security Model:**
+```sql
+-- RLS policies on all tables (example: contacts)
+CREATE POLICY "tenant_isolation_select" ON contacts
+  FOR SELECT TO authenticated
+  USING (organization_id = get_user_organization_id());
+
+-- Helper function reads from JWT claims
+CREATE FUNCTION get_user_organization_id()
+RETURNS bigint AS $$
+  SELECT organization_id FROM sales WHERE user_id = auth.uid();
+$$;
+```
+
+**Frontend Integration:**
+- `OrganizationContext` provider fetches current organization and settings
+- `useOrganization()` hook provides organization state
+- `useOrganizationConfiguration()` hook returns configuration with fallbacks to defaults
+- Organization settings stored in JSONB column (sectors, deal stages, task types, etc.)
+
+**User Onboarding:**
+1. **First Signup**: Creates new organization automatically, user becomes admin
+2. **Invitation**: Admin invites users via `/sales`, they join existing organization
+3. **Organization Settings**: Admin-only page at `/settings/organization`
+
+**Data Isolation:**
+- RLS policies filter all queries by `organization_id` (enforced at database level)
+- Frontend dataProvider remains simple - RLS handles filtering automatically
+- Triggers auto-populate `organization_id` on INSERT (developers don't need to remember)
+- FakeRest provider includes middleware to mimic RLS behavior in development
+
+**Performance:**
+- All tables have `idx_{table}_organization_id` indexes (< 0.1ms overhead per query)
+- RLS function overhead: ~0.025ms per query
+- Test suite: `tests/rls_tenant_isolation.test.sql` (10 comprehensive tests)
+- Performance analysis: `tests/PERFORMANCE_RESULTS.md`
+
+**Tables with Multi-Tenancy:**
+- organizations
+- sales
+- companies
+- contacts
+- contact_notes
+- deals
+- deal_notes
+- tasks
+- tags
+
 ## Development Workflows
 
 ### Path Aliases
@@ -162,9 +224,71 @@ When modifying contact or company data structures:
 6. Don't forget the export functions
 7. Don't forget the contact merge logic
 
+### Adding New Data Tables
+
+When adding new tables to the CRM:
+1. Create migration with table schema
+2. **Add `organization_id bigint NOT NULL` column with foreign key to organizations**
+3. **Create index: `CREATE INDEX idx_{table}_organization_id ON {table}(organization_id)`**
+4. **Add RLS policies** (see existing tables for pattern):
+   - `tenant_isolation_select` - filter by organization_id
+   - `tenant_isolation_insert` - enforce organization_id
+   - `tenant_isolation_update` - enforce organization_id
+   - `tenant_isolation_delete` - enforce organization_id
+5. **Create trigger to auto-populate organization_id** (see `set_sales_id_default()` trigger)
+6. Update FakeRest data generators to include `organization_id: 1`
+7. Add tests to `tests/rls_tenant_isolation.test.sql`
+
 ### Running with Test Data
 
 Import `test-data/contacts.csv` via the Contacts page → Import button.
+
+### Testing Multi-Tenancy
+
+Run the RLS tenant isolation test suite:
+```bash
+npx supabase db test tests/rls_tenant_isolation.test.sql
+```
+
+This test suite verifies:
+- Users can only see their organization's data (SELECT isolation)
+- Users cannot insert data into other organizations (INSERT blocked)
+- Users cannot update other organizations' data (UPDATE blocked)
+- Users cannot delete other organizations' data (DELETE blocked)
+- Views respect tenant isolation
+- Triggers auto-populate organization_id correctly
+- All tables have organization_id columns and indexes
+
+Run performance analysis:
+```bash
+psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -f tests/performance_analysis.sql
+```
+
+See results in `tests/PERFORMANCE_RESULTS.md`.
+
+### E2E Testing with Playwright
+
+Run end-to-end tests for multi-tenancy:
+
+```bash
+# Prerequisites: Supabase and app must be running
+make start            # Terminal 1: Start Supabase + Vite
+
+# Run E2E tests
+npm run test:e2e      # Run all E2E tests
+npm run test:e2e:ui   # Interactive UI mode
+npm run test:e2e:headed  # See browser while testing
+npm run test:e2e:debug   # Step-through debugging
+```
+
+E2E tests cover:
+- Organization creation on first signup
+- User invitation flow
+- Data isolation between organizations
+- Access control (admin vs. user)
+- Cross-tenant data leak prevention
+
+See `e2e/README.md` for detailed documentation.
 
 ### Git Hooks
 

@@ -102,7 +102,7 @@ const dataProviderWithCustomMethods = {
     return baseDataProvider.getOne(resource, params);
   },
 
-  async signUp({ email, password, first_name, last_name }: SignUpData) {
+  async signUp({ email, password, first_name, last_name, organization_name }: SignUpData) {
     const response = await supabase.auth.signUp({
       email,
       password,
@@ -110,6 +110,7 @@ const dataProviderWithCustomMethods = {
         data: {
           first_name,
           last_name,
+          organization_name,
         },
       },
     });
@@ -120,7 +121,7 @@ const dataProviderWithCustomMethods = {
     }
 
     // Update the is initialized cache
-    getIsInitialized._is_initialized_cache = true;
+    getIsInitialized._is_initialized_cache = null;
 
     return {
       id: response.data.user.id,

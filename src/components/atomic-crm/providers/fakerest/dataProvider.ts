@@ -245,8 +245,121 @@ async function updateCompany(
   });
 }
 
+// Organization filtering middleware for multi-tenancy
+const withOrganizationFilter = (
+  baseProvider: DataProvider,
+): DataProvider => {
+  const getCurrentUserOrganizationId = async (): Promise<number | null> => {
+    try {
+      const currentUser = await authProvider.getIdentity?.();
+      if (!currentUser) return null;
+
+      const { data: sales } = await baseProvider.getList("sales", {
+        filter: { id: currentUser.id },
+        pagination: { page: 1, perPage: 1 },
+        sort: { field: "id", order: "ASC" },
+      });
+
+      if (sales.length === 0) return null;
+      return sales[0].organization_id || null;
+    } catch (error) {
+      console.error("Failed to get organization_id:", error);
+      return null;
+    }
+  };
+
+  return {
+    ...baseProvider,
+    getList: async (resource, params) => {
+      // Organizations resource doesn't need filtering (RLS handles it)
+      if (resource === "organizations") {
+        return baseProvider.getList(resource, params);
+      }
+
+      // Get current user's organization
+      const organizationId = await getCurrentUserOrganizationId();
+      if (!organizationId) {
+        return baseProvider.getList(resource, params);
+      }
+
+      // Add organization filter automatically
+      return baseProvider.getList(resource, {
+        ...params,
+        filter: {
+          ...params.filter,
+          organization_id: organizationId,
+        },
+      });
+    },
+    getOne: async (resource, params) => {
+      // Organizations and views don't need filtering
+      if (
+        resource === "organizations" ||
+        resource === "companies_summary" ||
+        resource === "contacts_summary"
+      ) {
+        return baseProvider.getOne(resource, params);
+      }
+
+      const organizationId = await getCurrentUserOrganizationId();
+      if (!organizationId) {
+        return baseProvider.getOne(resource, params);
+      }
+
+      const result = await baseProvider.getOne(resource, params);
+
+      // Verify the record belongs to user's organization
+      if (result.data && (result.data as any).organization_id !== organizationId) {
+        throw new Error("Access denied");
+      }
+
+      return result;
+    },
+    getMany: async (resource, params) => {
+      if (resource === "organizations") {
+        return baseProvider.getMany(resource, params);
+      }
+
+      const organizationId = await getCurrentUserOrganizationId();
+      if (!organizationId) {
+        return baseProvider.getMany(resource, params);
+      }
+
+      const result = await baseProvider.getMany(resource, params);
+
+      // Filter results by organization
+      return {
+        ...result,
+        data: result.data.filter(
+          (record: any) => record.organization_id === organizationId,
+        ),
+      };
+    },
+    getManyReference: async (resource, params) => {
+      if (resource === "organizations") {
+        return baseProvider.getManyReference(resource, params);
+      }
+
+      const organizationId = await getCurrentUserOrganizationId();
+      if (!organizationId) {
+        return baseProvider.getManyReference(resource, params);
+      }
+
+      return baseProvider.getManyReference(resource, {
+        ...params,
+        filter: {
+          ...params.filter,
+          organization_id: organizationId,
+        },
+      });
+    },
+  } as DataProvider;
+};
+
 export const dataProvider = withLifecycleCallbacks(
-  withSupabaseFilterAdapter(dataProviderWithCustomMethod),
+  withSupabaseFilterAdapter(
+    withOrganizationFilter(dataProviderWithCustomMethod),
+  ),
   [
     {
       resource: "sales",

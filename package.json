@@ -4,7 +4,12 @@
   "type": "module",
   "scripts": {
     "test": "vitest",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:debug": "playwright test --debug",
     "dev": "vite --force",
+    "dev:test": "vite",
     "dev:demo": "vite --config vite.demo.config --force",
     "build": "tsc && vite build",
     "build:demo": "tsc && vite build --config vite.demo.config",
@@ -77,6 +82,7 @@
   "devDependencies": {
     "@eslint/js": "^9.22.0",
     "@inquirer/prompts": "^8.2.0",
+    "@playwright/test": "^1.58.0",
     "@testing-library/jest-dom": "^6.6.3",
     "@types/faker": "^5.5.9",
     "@types/jsonexport": "^3.0.5",

@@ -52,7 +52,12 @@ async function inviteUser(req: Request, currentUserSale: any) {
   const { data, error: userError } = await supabaseAdmin.auth.admin.createUser({
     email,
     password,
-    user_metadata: { first_name, last_name },
+    user_metadata: {
+      first_name,
+      last_name,
+      organization_id: currentUserSale.organization_id,
+      administrator: administrator || false,
+    },
   });
 
   const { error: emailError } =

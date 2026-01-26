@@ -22,5 +22,10 @@ export const canAccess = <
     return false;
   }
 
+  // Non admins can't access the organizations resource
+  if (params.resource === "organizations") {
+    return false;
+  }
+
   return true;
 };

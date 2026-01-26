@@ -40,8 +40,10 @@ export const authProvider: AuthProvider = {
   ...baseAuthProvider,
   login: async (params) => {
     const result = await baseAuthProvider.login(params);
-    // clear cached sale
+    // clear cached sale and organization
     cachedSale = undefined;
+    cachedOrganization = undefined;
+    getIsInitialized._is_initialized_cache = null;
     return result;
   },
   checkAuth: async (params) => {
@@ -87,6 +89,9 @@ export const authProvider: AuthProvider = {
     const sale = await getSaleFromCache();
     if (sale == null) return false;
 
+    // Require organization membership
+    if (!sale.organization_id) return false;
+
     // Compute access rights from the sale role
     const role = sale.administrator ? "admin" : "user";
     return canAccess(role, params);
@@ -116,7 +121,7 @@ const getSaleFromCache = async () => {
 
   const { data: dataSale, error: errorSale } = await supabase
     .from("sales")
-    .select("id, first_name, last_name, avatar, administrator")
+    .select("id, first_name, last_name, avatar, administrator, organization_id")
     .match({ user_id: dataSession?.session?.user.id })
     .single();
 
@@ -127,4 +132,26 @@ const getSaleFromCache = async () => {
 
   cachedSale = dataSale;
   return dataSale;
+};
+
+let cachedOrganization: any;
+const getOrganizationFromCache = async () => {
+  if (cachedOrganization != null) return cachedOrganization;
+
+  const sale = await getSaleFromCache();
+  if (!sale?.organization_id) return undefined;
+
+  const { data, error } = await supabase
+    .from("organizations")
+    .select("*")
+    .eq("id", sale.organization_id)
+    .single();
+
+  if (error || !data) {
+    console.error("Failed to fetch organization:", error);
+    return undefined;
+  }
+
+  cachedOrganization = data;
+  return data;
 };

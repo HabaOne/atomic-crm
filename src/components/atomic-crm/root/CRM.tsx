@@ -26,6 +26,7 @@ import sales from "../sales";
 import { SettingsPage } from "../settings/SettingsPage";
 import type { ConfigurationContextValue } from "./ConfigurationContext";
 import { ConfigurationProvider } from "./ConfigurationContext";
+import { OrganizationProvider } from "./OrganizationContext";
 import {
   defaultCompanySectors,
   defaultContactGender,
@@ -40,6 +41,7 @@ import {
 } from "./defaultConfiguration";
 import { i18nProvider } from "./i18nProvider";
 import { StartPage } from "../login/StartPage.tsx";
+import { OrganizationSettingsPage } from "../settings/OrganizationSettingsPage";
 
 export type CRMProps = {
   dataProvider?: DataProvider;
@@ -143,18 +145,23 @@ export const CRM = ({
         {...rest}
       >
         <CustomRoutes noLayout>
-          <Route path={SignupPage.path} element={<SignupPage />} />
-          <Route path={SetPasswordPage.path} element={<SetPasswordPage />} />
-          <Route
-            path={ForgotPasswordPage.path}
-            element={<ForgotPasswordPage />}
-          />
-          <Route path={OAuthConsentPage.path} element={<OAuthConsentPage />} />
+          <Route path="sign-up" element={<SignupPage />} />
+          <Route path="set-password" element={<SetPasswordPage />} />
+          <Route path="forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="oauth-consent" element={<OAuthConsentPage />} />
         </CustomRoutes>
 
-        <CustomRoutes>
-          <Route path={SettingsPage.path} element={<SettingsPage />} />
-        </CustomRoutes>
+        <OrganizationProvider>
+          <CustomRoutes>
+            <Route
+              path={OrganizationSettingsPage.path}
+              element={<OrganizationSettingsPage />}
+            />
+            <Route path={SettingsPage.path} element={<SettingsPage />} />
+          </CustomRoutes>
+        </OrganizationProvider>
+
+        <Resource name="organizations" />
         <Resource name="deals" {...deals} />
         <Resource name="contacts" {...contacts} />
         <Resource name="companies" {...companies} />
