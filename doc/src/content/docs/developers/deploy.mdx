@@ -29,50 +29,141 @@ You can then access the app via [`http://localhost:3000/`](http://localhost:3000
 
 ## Deploying The Frontend
 
-The frontend of the CRM is a Single-Page App that can be deployed to any CDN, or to GitHub Pages.
+The frontend of the CRM is a Single-Page App that can be deployed to any CDN. The production deployment uses **Netlify**, while GitHub Pages is used for demo deployments.
 
-First, build the frontend bundle with:
+### Netlify Deployment (Production & Staging)
+
+The repository includes a `netlify.toml` configuration file that handles:
+- **Production deployment** from the `main` branch
+- **Staging deployment** from the `stage` branch
+- **Preview deployments** for pull requests
+
+**Setup Steps:**
+
+1. **Import Repository to Netlify**
+   - Go to Netlify dashboard and import the repository
+   - Netlify will auto-detect the build settings from `netlify.toml`
+
+2. **Configure Environment Variables**
+
+   In Netlify Site Settings → Environment Variables, add:
+   - `SUPABASE_URL` - Your Supabase project URL
+   - `SUPABASE_ANON_KEY` - Your Supabase anonymous key
+   - `VITE_INBOUND_EMAIL` - Inbound email address (optional)
+
+   For staging, add branch-specific variables scoped to the `stage` branch with staging Supabase credentials.
+
+3. **Deploy**
+   - Push to `main` branch for production deployment
+   - Push to `stage` branch for staging deployment
+   - Open a PR for preview deployment
+
+The built app will be available at:
+- Production: `https://[site-name].netlify.app`
+- Staging: `https://stage--[site-name].netlify.app`
+
+### Manual Build
+
+To build the frontend locally:
 
 ```sh
 make build
 ```
 
-This will create a `dist` directory with the built application made of static HTML, CSS, and JS files. Upload this directory to the CDN of your choice (e.g. Netlify, Vercel, etc.).
+This creates a `dist` directory with static HTML, CSS, and JS files that can be uploaded to any CDN.
 
-If you want to deploy it to GitHub pages, you can use the following command:
+### GitHub Pages (Demo Only)
+
+GitHub Pages is used exclusively for demo deployments. The demo uses fake data and does not connect to Supabase.
+
+To deploy the demo manually:
 
 ```sh
 npm run ghpages:deploy
 ```
 
-The CRM will be available at `https://<username>.github.io/atomic-crm/`.
+The demo will be available at `https://<username>.github.io/atomic-crm/`.
 
 ## Deploying Updates
 
-If you've modified the code, run the following command to deploy a new version of your CRM:
+To deploy updates to your production CRM:
+
+### Backend Updates
+
+Deploy Supabase migrations and edge functions:
+
+```sh
+make supabase-deploy
+```
+
+Or manually:
+
+```sh
+npx supabase db push          # Apply migrations
+npx supabase functions deploy # Deploy edge functions
+```
+
+### Frontend Updates
+
+**Netlify (Production & Staging):**
+
+Frontend updates deploy automatically when you push to:
+- `main` branch → Production
+- `stage` branch → Staging
+
+**Demo (GitHub Pages):**
+
+Deploy demo manually:
+
+```sh
+npm run ghpages:deploy
+```
+
+### Full Deployment
+
+To deploy everything at once (backend + demo):
 
 ```sh
 make prod-deploy
 ```
 
-It will apply migrations, deploy edge functions and push the built applications to the `gh-pages` branch.
+This applies migrations, deploys edge functions, and pushes the demo to GitHub Pages. Production frontend deploys automatically via Netlify when you push to `main`.
 
 ## Automating Deployments With GitHub Actions
 
-Atomic CRM contains GitHub actions for continuous integration and delivery. To enable these actions, you will
-have to create the following secrets on GitHub:
+Atomic CRM includes GitHub Actions workflows for continuous integration and delivery. On every push to the `main` branch:
+
+1. **Backend (Supabase)** - Deploys database migrations and edge functions
+2. **Frontend (Netlify)** - Automatically deploys via Netlify's GitHub integration
+3. **Demo (GitHub Pages)** - Deploys demo variant with fake data
+
+### GitHub Secrets Configuration
+
+To enable backend deployments, configure the following secrets in your GitHub repository:
 
 ```bash
-SUPABASE_ACCESS_TOKEN: Your personal access token, can be found at https://supabase.com/dashboard/account/tokens
-SUPABASE_DB_PASSWORD: Your supabase database password
-SUPABASE_PROJECT_ID: Your supabase project id
-SUPABASE_URL: Your supabase project URL
-SUPABASE_ANON_KEY: Your supabase project anonymous key
-POSTMARK_WEBHOOK_USER: User configured in Postmark to secure the webhook
-POSTMARK_WEBHOOK_PASSWORD: Password configured in Postmark to secure the webhook
-POSTMARK_WEBHOOK_AUTHORIZED_IPS: List of IPs (comma separated) authorized to send requests to the Postmark webhook
+SUPABASE_ACCESS_TOKEN: Your personal access token (https://supabase.com/dashboard/account/tokens)
+SUPABASE_DB_PASSWORD: Your Supabase database password
+SUPABASE_PROJECT_ID: Your Supabase project ID
+SUPABASE_URL: Your Supabase project URL
+SUPABASE_ANON_KEY: Your Supabase anonymous key
+POSTMARK_WEBHOOK_USER: User for Postmark webhook authentication
+POSTMARK_WEBHOOK_PASSWORD: Password for Postmark webhook authentication
+POSTMARK_WEBHOOK_AUTHORIZED_IPS: Comma-separated IPs authorized for Postmark webhook
 ```
 
-> **Note:** The `POSTMARK_*` variables are required for Atomic CRM's inbound email features. Have a look at the the [inbound email configuration](../inbound-email-configuration) to learn more about their usage and setup.
+> **Note:** The `POSTMARK_*` variables are required for inbound email features. See [inbound email configuration](../inbound-email-configuration) for setup details.
 
-The GitHub action will run the `prod-deploy` command on every push to the `main` branch, deploying the frontend to GitHub pages and updating the Supabase instance.
+### Deployment Flow
+
+**On push to `main`:**
+- GitHub Actions deploys Supabase backend (migrations + functions)
+- Netlify automatically builds and deploys production frontend
+- GitHub Actions deploys demo variant to GitHub Pages
+
+**On push to `stage`:**
+- Netlify automatically builds and deploys staging frontend
+- Supabase staging updates are deployed manually or via separate workflow
+
+**On pull request:**
+- Netlify creates preview deployment with unique URL
