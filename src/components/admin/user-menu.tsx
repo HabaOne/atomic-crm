@@ -55,6 +55,7 @@ export function UserMenu({ children }: UserMenuProps) {
           <Button
             variant="ghost"
             className="relative h-8 w-8 ml-2 rounded-full"
+            data-testid="user-menu"
           >
             <Avatar className="h-8 w-8">
               <AvatarImage src={identity?.avatar} role="presentation" />

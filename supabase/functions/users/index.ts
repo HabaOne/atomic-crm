@@ -52,6 +52,7 @@ async function inviteUser(req: Request, currentUserSale: any) {
   const { data, error: userError } = await supabaseAdmin.auth.admin.createUser({
     email,
     password,
+    email_confirm: !!password,
     user_metadata: {
       first_name,
       last_name,
@@ -60,8 +61,11 @@ async function inviteUser(req: Request, currentUserSale: any) {
     },
   });
 
-  const { error: emailError } =
-    await supabaseAdmin.auth.admin.inviteUserByEmail(email);
+  let emailError = null;
+  if (!password) {
+    const result = await supabaseAdmin.auth.admin.inviteUserByEmail(email);
+    emailError = result.error;
+  }
 
   if (!data?.user || userError) {
     console.error(`Error inviting user: user_error=${userError}`);

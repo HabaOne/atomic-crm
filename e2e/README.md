@@ -1,15 +1,16 @@
-# E2E Testing for Multi-Tenancy
+# E2E Testing for Atomic CRM
 
 ## Overview
 
-This directory contains end-to-end tests for the multi-tenancy implementation using Playwright. These tests verify the complete user flow including organization creation, user invitation, data isolation, and access control.
+This directory contains end-to-end tests for the CRM implementation using Playwright. These tests verify the complete user flow including multi-tenancy, API key authentication, organization creation, user invitation, data isolation, and access control.
 
 ## Test Structure
 
 ### Test Files
 
-- `setup.spec.ts` - Smoke tests to verify basic application loading
+- `smoke.spec.ts` - Smoke tests to verify basic application loading
 - `multi-tenancy.spec.ts` - Comprehensive multi-tenancy tests
+- `api-keys.spec.ts` - API key authentication tests
 
 ### Test Coverage
 
@@ -35,6 +36,15 @@ The multi-tenancy test suite covers:
    - Admin in same org can see user-created data
    - Other organizations cannot see user-created data
 
+5. **API Key Authentication** (`api-keys.spec.ts`)
+   - Admin can create API keys via UI
+   - API keys can perform CRUD operations
+   - Organization API keys respect tenant isolation
+   - API keys can be revoked via UI
+   - Revoked keys return 401 Unauthorized
+   - Invalid keys return proper error responses
+   - Email/password authentication still works alongside API keys
+
 ## Running Tests
 
 ### Prerequisites
@@ -58,7 +68,14 @@ npm run test:e2e
 ### Run Specific Test File
 
 ```bash
+# Multi-tenancy tests
 npm run test:e2e -- multi-tenancy.spec.ts
+
+# API key tests
+npm run test:e2e -- api-keys.spec.ts
+
+# Smoke tests
+npm run test:e2e -- smoke.spec.ts
 ```
 
 ### Run with UI Mode (Interactive)
@@ -108,22 +125,40 @@ npm run test:e2e
 
 ## Test Data
 
-The tests create the following test data:
+### Multi-Tenancy Tests
 
-### Organizations
+The multi-tenancy tests create:
+
+**Organizations:**
 - **Organization 1**: test-org-1 (admin: admin1@test-org1.com)
 - **Organization 2**: test-org-2 (admin: admin2@test-org2.com)
 
-### Users
+**Users:**
 - `admin1@test-org1.com` - Admin in Org 1
 - `user1@test-org1.com` - Regular user in Org 1
 - `admin2@test-org2.com` - Admin in Org 2
 
-### Test Data
+**Test Data:**
 - Contacts: "Contact Org1" (Org 1), "Contact Org2" (Org 2)
 - Companies: "Company by User Org1" (Org 1)
 
-**Note**: Database is reset before tests via `npx supabase db reset`
+### API Key Tests
+
+The API key tests create:
+
+**Organizations:**
+- **API Test Org 1**: (admin: apikey-admin1@test.com)
+- **API Test Org 2**: (admin: apikey-admin2@test.com)
+
+**API Keys:**
+- Organization API keys for both orgs
+- Keys are created, used for CRUD operations, and revoked during tests
+
+**Test Data:**
+- Contacts created via API in both organizations
+- Used to verify tenant isolation
+
+**Note**: Tests run sequentially and database state persists across test groups within the same test file.
 
 ## Test Configuration
 

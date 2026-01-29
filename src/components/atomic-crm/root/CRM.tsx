@@ -24,6 +24,7 @@ import {
 } from "../providers/supabase";
 import sales from "../sales";
 import { SettingsPage } from "../settings/SettingsPage";
+import { ApiKeysPage } from "../settings/ApiKeysPage";
 import type { ConfigurationContextValue } from "./ConfigurationContext";
 import { ConfigurationProvider } from "./ConfigurationContext";
 import { OrganizationProvider } from "./OrganizationContext";
@@ -151,13 +152,17 @@ export const CRM = ({
           <Route path="oauth-consent" element={<OAuthConsentPage />} />
         </CustomRoutes>
 
+        <CustomRoutes>
+          <Route path="/settings/api-keys" element={<ApiKeysPage />} />
+          <Route path={SettingsPage.path} element={<SettingsPage />} />
+        </CustomRoutes>
+
         <OrganizationProvider>
           <CustomRoutes>
             <Route
               path={OrganizationSettingsPage.path}
               element={<OrganizationSettingsPage />}
             />
-            <Route path={SettingsPage.path} element={<SettingsPage />} />
           </CustomRoutes>
         </OrganizationProvider>
 

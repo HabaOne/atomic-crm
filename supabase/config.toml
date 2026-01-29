@@ -155,3 +155,21 @@ s3_secret_key = "env(S3_SECRET_KEY)"
 
 [functions.postmark]
 verify_jwt = false
+
+[functions.api-keys]
+verify_jwt = false
+
+[functions.api-gateway]
+verify_jwt = false
+
+[functions.users]
+verify_jwt = false
+
+[functions.updatePassword]
+verify_jwt = false
+
+[functions.organizations]
+verify_jwt = false
+
+[functions.mergeContacts]
+verify_jwt = false

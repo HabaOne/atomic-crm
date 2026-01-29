@@ -72,6 +72,13 @@ export const authProvider: AuthProvider = {
       avatar: user?.avatar?.src,
     });
   },
+  getPermissions: () => {
+    const userItem = localStorage.getItem(USER_STORAGE_KEY);
+    const user = userItem ? (JSON.parse(userItem) as Sale) : null;
+    return Promise.resolve({
+      administrator: user?.administrator || false,
+    });
+  },
   async getAuthorizationDetails() {
     await new Promise((resolve) => setTimeout(resolve, 500));
     // return dummy data to avoid errors in OAuthConsentPage

@@ -81,6 +81,15 @@ export const authProvider: AuthProvider = {
 
     return baseAuthProvider.checkAuth(params);
   },
+  getPermissions: async () => {
+    const sale = await getSaleFromCache();
+    if (!sale) {
+      return { administrator: false };
+    }
+    return {
+      administrator: sale.administrator || false,
+    };
+  },
   canAccess: async (params) => {
     const isInitialized = await getIsInitialized();
     if (!isInitialized) return false;
