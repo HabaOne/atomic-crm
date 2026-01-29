@@ -97,6 +97,14 @@
           "type": "registry:component"
         },
         {
+          "path": "src/components/atomic-crm/settings/OrganizationSettingsPage.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/settings/ApiKeysPage.tsx",
+          "type": "registry:component"
+        },
+        {
           "path": "src/components/atomic-crm/sales/index.ts",
           "type": "registry:component"
         },
@@ -126,6 +134,10 @@
         },
         {
           "path": "src/components/atomic-crm/root/defaultConfiguration.ts",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/root/OrganizationContext.tsx",
           "type": "registry:component"
         },
         {
@@ -226,6 +238,10 @@
         },
         {
           "path": "src/components/atomic-crm/providers/fakerest/dataGenerator/sales.ts",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/providers/fakerest/dataGenerator/organizations.ts",
           "type": "registry:component"
         },
         {
