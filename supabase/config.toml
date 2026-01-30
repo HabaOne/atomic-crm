@@ -165,7 +165,7 @@ verify_jwt = false
 [functions.users]
 verify_jwt = false
 
-[functions.updatePassword]
+[functions.updatepassword]
 verify_jwt = false
 
 [functions.organizations]
