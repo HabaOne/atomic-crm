@@ -171,5 +171,5 @@ verify_jwt = false
 [functions.organizations]
 verify_jwt = false
 
-[functions.mergeContacts]
+[functions.mergecontacts]
 verify_jwt = false
