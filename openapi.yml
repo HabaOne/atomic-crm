@@ -1,0 +1,2242 @@
+openapi: 3.0.0
+info:
+  title: Atomic CRM API
+  description: |
+    Comprehensive REST API for Atomic CRM - a full-featured CRM system with contacts, companies, deals, tasks, and notes management.
+
+    ## Authentication
+
+    This API supports two authentication methods:
+
+    1. **Supabase JWT Token** (for authenticated users)
+       - Required for most Edge Function endpoints
+       - Obtained from Supabase auth on login
+       - Pass as Bearer token in Authorization header
+
+    2. **API Key** (for programmatic access via API Gateway)
+       - Format: `ak_org_` (organization-scoped) or `ak_master_` (super admin)
+       - Pass as Bearer token in Authorization header
+       - Organization-scoped keys filtered by organization_id
+       - Supports read and write scopes
+
+    ## Rate Limiting
+
+    API requests are rate-limited to 100 requests per minute per API key.
+
+    ## Multi-Tenancy
+
+    All data is automatically filtered by organization_id. Authenticated users can only access their organization's data.
+
+  version: 1.0.1
+  contact:
+    name: API Support
+  license:
+    name: MIT
+
+servers:
+  - url: http://localhost:5173
+    description: Local development (frontend)
+  - url: http://127.0.0.1:54321
+    description: Local Supabase backend
+  - url: http://127.0.0.1:54321/functions/v1
+    description: Local Edge Functions
+
+tags:
+  - name: Supabase REST - Contacts
+    description: CRUD operations for contacts
+  - name: Supabase REST - Companies
+    description: CRUD operations for companies
+  - name: Supabase REST - Deals
+    description: CRUD operations for deals (pipeline management)
+  - name: Supabase REST - Tasks
+    description: CRUD operations for tasks
+  - name: Supabase REST - Contact Notes
+    description: CRUD operations for contact notes
+  - name: Supabase REST - Deal Notes
+    description: CRUD operations for deal notes
+  - name: Supabase REST - Tags
+    description: CRUD operations for tags
+  - name: Supabase REST - Organizations
+    description: CRUD operations for organizations (admin only)
+  - name: Supabase REST - Sales
+    description: CRUD operations for sales team members
+  - name: Supabase REST - API Keys
+    description: CRUD operations for API keys (admin only)
+  - name: Edge Functions - Organizations
+    description: Organization management endpoints
+  - name: Edge Functions - Users
+    description: User management endpoints
+  - name: Edge Functions - Contacts
+    description: Contact-specific operations
+  - name: Edge Functions - API Management
+    description: API key management
+  - name: Edge Functions - External
+    description: Public/external webhooks
+  - name: API Gateway
+    description: Public programmatic API via API keys
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Supabase JWT token for authenticated users
+    apiKey:
+      type: http
+      scheme: bearer
+      bearerFormat: API Key
+      description: API key with format ak_org_* or ak_master_*
+
+  schemas:
+    # Shared schemas
+    EmailAndType:
+      type: object
+      required:
+        - email
+        - type
+      properties:
+        email:
+          type: string
+          format: email
+        type:
+          type: string
+          enum: [Work, Home, Other]
+
+    PhoneNumberAndType:
+      type: object
+      required:
+        - number
+        - type
+      properties:
+        number:
+          type: string
+        type:
+          type: string
+          enum: [Work, Home, Other]
+
+    # Contact
+    Contact:
+      type: object
+      required:
+        - first_name
+        - last_name
+        - title
+        - company_id
+        - email_jsonb
+        - phone_jsonb
+        - gender
+        - sales_id
+        - status
+        - background
+        - first_seen
+        - last_seen
+        - has_newsletter
+        - tags
+      properties:
+        id:
+          type: integer
+          description: Unique contact identifier
+        first_name:
+          type: string
+          example: John
+        last_name:
+          type: string
+          example: Doe
+        title:
+          type: string
+          example: Sales Manager
+        company_id:
+          type: integer
+          description: Reference to company
+        email_jsonb:
+          type: array
+          items:
+            $ref: '#/components/schemas/EmailAndType'
+        phone_jsonb:
+          type: array
+          items:
+            $ref: '#/components/schemas/PhoneNumberAndType'
+        avatar:
+          type: object
+          nullable: true
+          properties:
+            src:
+              type: string
+              format: uri
+            title:
+              type: string
+        linkedin_url:
+          type: string
+          format: uri
+          nullable: true
+        gender:
+          type: string
+          enum: [Male, Female, Non-binary, Other]
+        sales_id:
+          type: integer
+          description: Assigned sales representative ID
+        status:
+          type: string
+          example: Active
+        background:
+          type: string
+        first_seen:
+          type: string
+          format: date-time
+        last_seen:
+          type: string
+          format: date-time
+        has_newsletter:
+          type: boolean
+        tags:
+          type: array
+          items:
+            type: integer
+          description: Array of tag IDs
+        nb_tasks:
+          type: integer
+          nullable: true
+          description: Count of associated tasks (view only)
+        company_name:
+          type: string
+          nullable: true
+          description: Denormalized company name (view only)
+        organization_id:
+          type: integer
+          description: Automatic organization isolation
+
+    # Company
+    Company:
+      type: object
+      required:
+        - name
+        - logo
+        - sector
+        - size
+        - linkedin_url
+        - website
+        - phone_number
+        - address
+        - zipcode
+        - city
+        - state_abbr
+        - country
+        - sales_id
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+          example: Acme Corp
+        logo:
+          type: object
+          properties:
+            src:
+              type: string
+              format: uri
+            title:
+              type: string
+        sector:
+          type: string
+          example: Technology
+        size:
+          type: integer
+          enum: [1, 10, 50, 250, 500]
+          description: Company size range
+        linkedin_url:
+          type: string
+          format: uri
+        website:
+          type: string
+          format: uri
+        phone_number:
+          type: string
+        address:
+          type: string
+        zipcode:
+          type: string
+        city:
+          type: string
+        state_abbr:
+          type: string
+          minLength: 2
+          maxLength: 2
+        country:
+          type: string
+        sales_id:
+          type: integer
+          description: Assigned sales representative
+        created_at:
+          type: string
+          format: date-time
+        description:
+          type: string
+          nullable: true
+        revenue:
+          type: string
+          nullable: true
+        tax_identifier:
+          type: string
+          nullable: true
+        context_links:
+          type: array
+          items:
+            type: string
+          nullable: true
+        nb_contacts:
+          type: integer
+          nullable: true
+          description: Count of contacts (view only)
+        nb_deals:
+          type: integer
+          nullable: true
+          description: Count of deals (view only)
+        organization_id:
+          type: integer
+          description: Automatic organization isolation
+
+    # Deal
+    Deal:
+      type: object
+      required:
+        - name
+        - company_id
+        - contact_ids
+        - category
+        - stage
+        - created_at
+        - updated_at
+        - sales_id
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+          example: Q1 Enterprise Contract
+        company_id:
+          type: integer
+        contact_ids:
+          type: array
+          items:
+            type: integer
+          description: IDs of associated contacts
+        category:
+          type: string
+          example: Software Licensing
+        stage:
+          type: string
+          enum: [opportunity, proposal-sent, in-negotiation, won, lost, delayed]
+          example: in-negotiation
+        description:
+          type: string
+          nullable: true
+        amount:
+          type: number
+          format: decimal
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        archived_at:
+          type: string
+          format: date-time
+          nullable: true
+        expected_closing_date:
+          type: string
+          format: date-time
+        sales_id:
+          type: integer
+          description: Deal owner
+        index:
+          type: integer
+          description: Position in pipeline (Kanban order)
+        organization_id:
+          type: integer
+          description: Automatic organization isolation
+
+    # Task
+    Task:
+      type: object
+      required:
+        - contact_id
+        - type
+        - text
+        - due_date
+        - sales_id
+      properties:
+        id:
+          type: integer
+        contact_id:
+          type: integer
+        type:
+          type: string
+          example: Email
+        text:
+          type: string
+          example: Follow up on proposal
+        due_date:
+          type: string
+          format: date-time
+        done_date:
+          type: string
+          format: date-time
+          nullable: true
+        sales_id:
+          type: integer
+          nullable: true
+        organization_id:
+          type: integer
+          description: Automatic organization isolation
+
+    # Contact Note
+    ContactNote:
+      type: object
+      required:
+        - contact_id
+        - text
+        - status
+        - sales_id
+      properties:
+        id:
+          type: integer
+        contact_id:
+          type: integer
+        text:
+          type: string
+        date:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum: [cold, warm, hot, in-contract]
+        sales_id:
+          type: integer
+        attachments:
+          type: array
+          items:
+            type: object
+            properties:
+              src:
+                type: string
+                format: uri
+              title:
+                type: string
+          nullable: true
+        organization_id:
+          type: integer
+          description: Automatic organization isolation
+
+    # Deal Note
+    DealNote:
+      type: object
+      required:
+        - deal_id
+        - text
+        - sales_id
+      properties:
+        id:
+          type: integer
+        deal_id:
+          type: integer
+        text:
+          type: string
+        date:
+          type: string
+          format: date-time
+        sales_id:
+          type: integer
+        attachments:
+          type: array
+          items:
+            type: object
+            properties:
+              src:
+                type: string
+                format: uri
+              title:
+                type: string
+          nullable: true
+        organization_id:
+          type: integer
+          description: Automatic organization isolation
+
+    # Tag
+    Tag:
+      type: object
+      required:
+        - name
+        - color
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+          example: VIP
+        color:
+          type: string
+          format: color
+          example: "#FF5733"
+        organization_id:
+          type: integer
+          description: Automatic organization isolation
+
+    # Sale (Team Member)
+    Sale:
+      type: object
+      required:
+        - first_name
+        - last_name
+        - email
+        - user_id
+        - administrator
+      properties:
+        id:
+          type: integer
+        first_name:
+          type: string
+        last_name:
+          type: string
+        email:
+          type: string
+          format: email
+        user_id:
+          type: string
+          format: uuid
+        password:
+          type: string
+          description: Only for internal use in FakeRest - never returned from API
+          deprecated: true
+        avatar:
+          type: object
+          nullable: true
+          properties:
+            src:
+              type: string
+              format: uri
+            title:
+              type: string
+        administrator:
+          type: boolean
+          description: Can manage team members and organization settings
+        disabled:
+          type: boolean
+          default: false
+        organization_id:
+          type: integer
+          description: Automatic organization isolation
+
+    # Organization
+    Organization:
+      type: object
+      required:
+        - name
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+          example: Acme Sales
+        settings:
+          type: object
+          description: JSON configuration for CRM settings
+          nullable: true
+          properties:
+            company_sectors:
+              type: array
+              items:
+                type: string
+            deal_stages:
+              type: array
+              items:
+                type: object
+                properties:
+                  value:
+                    type: string
+                  label:
+                    type: string
+            deal_categories:
+              type: array
+              items:
+                type: string
+            note_statuses:
+              type: array
+              items:
+                type: object
+                properties:
+                  value:
+                    type: string
+                  label:
+                    type: string
+                  color:
+                    type: string
+            task_types:
+              type: array
+              items:
+                type: string
+        logo_light:
+          type: string
+          format: uri
+          nullable: true
+        logo_dark:
+          type: string
+          format: uri
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+
+    # API Key
+    ApiKey:
+      type: object
+      required:
+        - key_prefix
+        - type
+        - name
+      properties:
+        id:
+          type: integer
+        key:
+          type: string
+          description: Full API key - only returned on creation
+          example: ak_org_abcdef1234567890
+        key_prefix:
+          type: string
+          description: Masked key prefix
+          example: ak_org_...
+        type:
+          type: string
+          enum: [organization, master]
+        name:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        last_used_at:
+          type: string
+          format: date-time
+          nullable: true
+        expires_at:
+          type: string
+          format: date-time
+          nullable: true
+        revoked_at:
+          type: string
+          format: date-time
+          nullable: true
+        scopes:
+          type: array
+          items:
+            type: string
+            enum: [read, write]
+          default: [read, write]
+
+    # Error Response
+    ErrorResponse:
+      type: object
+      required:
+        - status
+        - message
+      properties:
+        status:
+          type: integer
+        message:
+          type: string
+
+paths:
+  # ============ SUPABASE REST API ============
+
+  /rest/v1/contacts:
+    get:
+      tags:
+        - Supabase REST - Contacts
+      summary: List all contacts
+      operationId: listContacts
+      security:
+        - bearerAuth: []
+        - apiKey: []
+      parameters:
+        - name: select
+          in: query
+          description: Comma-separated list of columns to return
+          schema:
+            type: string
+            default: "*"
+        - name: order
+          in: query
+          description: Order by column(s)
+          schema:
+            type: string
+        - name: limit
+          in: query
+          description: Maximum number of rows to return
+          schema:
+            type: integer
+        - name: offset
+          in: query
+          description: Number of rows to skip
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: List of contacts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Contact'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    post:
+      tags:
+        - Supabase REST - Contacts
+      summary: Create a new contact
+      operationId: createContact
+      security:
+        - bearerAuth: []
+        - apiKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Contact'
+      responses:
+        '201':
+          description: Contact created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Contact'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /rest/v1/contacts/{id}:
+    get:
+      tags:
+        - Supabase REST - Contacts
+      summary: Get a contact by ID
+      operationId: getContact
+      security:
+        - bearerAuth: []
+        - apiKey: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Contact details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Contact'
+        '404':
+          description: Contact not found
+
+    patch:
+      tags:
+        - Supabase REST - Contacts
+      summary: Update a contact
+      operationId: updateContact
+      security:
+        - bearerAuth: []
+        - apiKey: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Contact'
+      responses:
+        '200':
+          description: Contact updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Contact'
+
+    delete:
+      tags:
+        - Supabase REST - Contacts
+      summary: Delete a contact
+      operationId: deleteContact
+      security:
+        - bearerAuth: []
+        - apiKey: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Contact deleted
+
+  # Companies
+  /rest/v1/companies:
+    get:
+      tags:
+        - Supabase REST - Companies
+      summary: List all companies
+      operationId: listCompanies
+      security:
+        - bearerAuth: []
+        - apiKey: []
+      parameters:
+        - name: select
+          in: query
+          schema:
+            type: string
+            default: "*"
+        - name: order
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+        - name: offset
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: List of companies
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Company'
+
+    post:
+      tags:
+        - Supabase REST - Companies
+      summary: Create a new company
+      operationId: createCompany
+      security:
+        - bearerAuth: []
+        - apiKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Company'
+      responses:
+        '201':
+          description: Company created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Company'
+
+  /rest/v1/companies/{id}:
+    get:
+      tags:
+        - Supabase REST - Companies
+      summary: Get a company by ID
+      operationId: getCompany
+      security:
+        - bearerAuth: []
+        - apiKey: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Company details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Company'
+
+    patch:
+      tags:
+        - Supabase REST - Companies
+      summary: Update a company
+      operationId: updateCompany
+      security:
+        - bearerAuth: []
+        - apiKey: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Company'
+      responses:
+        '200':
+          description: Company updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Company'
+
+    delete:
+      tags:
+        - Supabase REST - Companies
+      summary: Delete a company
+      operationId: deleteCompany
+      security:
+        - bearerAuth: []
+        - apiKey: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Company deleted
+
+  # Deals
+  /rest/v1/deals:
+    get:
+      tags:
+        - Supabase REST - Deals
+      summary: List all deals
+      operationId: listDeals
+      security:
+        - bearerAuth: []
+        - apiKey: []
+      parameters:
+        - name: select
+          in: query
+          schema:
+            type: string
+            default: "*"
+        - name: order
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: List of deals
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Deal'
+
+    post:
+      tags:
+        - Supabase REST - Deals
+      summary: Create a new deal
+      operationId: createDeal
+      security:
+        - bearerAuth: []
+        - apiKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Deal'
+      responses:
+        '201':
+          description: Deal created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Deal'
+
+  /rest/v1/deals/{id}:
+    get:
+      tags:
+        - Supabase REST - Deals
+      summary: Get a deal by ID
+      operationId: getDeal
+      security:
+        - bearerAuth: []
+        - apiKey: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Deal details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Deal'
+
+    patch:
+      tags:
+        - Supabase REST - Deals
+      summary: Update a deal
+      operationId: updateDeal
+      security:
+        - bearerAuth: []
+        - apiKey: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Deal'
+      responses:
+        '200':
+          description: Deal updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Deal'
+
+    delete:
+      tags:
+        - Supabase REST - Deals
+      summary: Delete a deal
+      operationId: deleteDeal
+      security:
+        - bearerAuth: []
+        - apiKey: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Deal deleted
+
+  # Tasks
+  /rest/v1/tasks:
+    get:
+      tags:
+        - Supabase REST - Tasks
+      summary: List all tasks
+      operationId: listTasks
+      security:
+        - bearerAuth: []
+        - apiKey: []
+      responses:
+        '200':
+          description: List of tasks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Task'
+
+    post:
+      tags:
+        - Supabase REST - Tasks
+      summary: Create a new task
+      operationId: createTask
+      security:
+        - bearerAuth: []
+        - apiKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Task'
+      responses:
+        '201':
+          description: Task created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+
+  /rest/v1/tasks/{id}:
+    get:
+      tags:
+        - Supabase REST - Tasks
+      summary: Get a task by ID
+      operationId: getTask
+      security:
+        - bearerAuth: []
+        - apiKey: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Task details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+
+    patch:
+      tags:
+        - Supabase REST - Tasks
+      summary: Update a task
+      operationId: updateTask
+      security:
+        - bearerAuth: []
+        - apiKey: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Task'
+      responses:
+        '200':
+          description: Task updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+
+    delete:
+      tags:
+        - Supabase REST - Tasks
+      summary: Delete a task
+      operationId: deleteTask
+      security:
+        - bearerAuth: []
+        - apiKey: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Task deleted
+
+  # Contact Notes
+  /rest/v1/contact_notes:
+    get:
+      tags:
+        - Supabase REST - Contact Notes
+      summary: List all contact notes
+      operationId: listContactNotes
+      security:
+        - bearerAuth: []
+        - apiKey: []
+      responses:
+        '200':
+          description: List of contact notes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ContactNote'
+
+    post:
+      tags:
+        - Supabase REST - Contact Notes
+      summary: Create a new contact note
+      operationId: createContactNote
+      security:
+        - bearerAuth: []
+        - apiKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContactNote'
+      responses:
+        '201':
+          description: Contact note created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContactNote'
+
+  /rest/v1/contact_notes/{id}:
+    get:
+      tags:
+        - Supabase REST - Contact Notes
+      summary: Get a contact note by ID
+      operationId: getContactNote
+      security:
+        - bearerAuth: []
+        - apiKey: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Contact note details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContactNote'
+
+    patch:
+      tags:
+        - Supabase REST - Contact Notes
+      summary: Update a contact note
+      operationId: updateContactNote
+      security:
+        - bearerAuth: []
+        - apiKey: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContactNote'
+      responses:
+        '200':
+          description: Contact note updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContactNote'
+
+    delete:
+      tags:
+        - Supabase REST - Contact Notes
+      summary: Delete a contact note
+      operationId: deleteContactNote
+      security:
+        - bearerAuth: []
+        - apiKey: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Contact note deleted
+
+  # Deal Notes
+  /rest/v1/deal_notes:
+    get:
+      tags:
+        - Supabase REST - Deal Notes
+      summary: List all deal notes
+      operationId: listDealNotes
+      security:
+        - bearerAuth: []
+        - apiKey: []
+      responses:
+        '200':
+          description: List of deal notes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DealNote'
+
+    post:
+      tags:
+        - Supabase REST - Deal Notes
+      summary: Create a new deal note
+      operationId: createDealNote
+      security:
+        - bearerAuth: []
+        - apiKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DealNote'
+      responses:
+        '201':
+          description: Deal note created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DealNote'
+
+  /rest/v1/deal_notes/{id}:
+    patch:
+      tags:
+        - Supabase REST - Deal Notes
+      summary: Update a deal note
+      operationId: updateDealNote
+      security:
+        - bearerAuth: []
+        - apiKey: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DealNote'
+      responses:
+        '200':
+          description: Deal note updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DealNote'
+
+    delete:
+      tags:
+        - Supabase REST - Deal Notes
+      summary: Delete a deal note
+      operationId: deleteDealNote
+      security:
+        - bearerAuth: []
+        - apiKey: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Deal note deleted
+
+  # Tags
+  /rest/v1/tags:
+    get:
+      tags:
+        - Supabase REST - Tags
+      summary: List all tags
+      operationId: listTags
+      security:
+        - bearerAuth: []
+        - apiKey: []
+      responses:
+        '200':
+          description: List of tags
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Tag'
+
+    post:
+      tags:
+        - Supabase REST - Tags
+      summary: Create a new tag
+      operationId: createTag
+      security:
+        - bearerAuth: []
+        - apiKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Tag'
+      responses:
+        '201':
+          description: Tag created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tag'
+
+  /rest/v1/tags/{id}:
+    patch:
+      tags:
+        - Supabase REST - Tags
+      summary: Update a tag
+      operationId: updateTag
+      security:
+        - bearerAuth: []
+        - apiKey: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Tag'
+      responses:
+        '200':
+          description: Tag updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tag'
+
+    delete:
+      tags:
+        - Supabase REST - Tags
+      summary: Delete a tag
+      operationId: deleteTag
+      security:
+        - bearerAuth: []
+        - apiKey: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Tag deleted
+
+  # Sales (Team Members)
+  /rest/v1/sales:
+    get:
+      tags:
+        - Supabase REST - Sales
+      summary: List all team members
+      operationId: listSales
+      security:
+        - bearerAuth: []
+        - apiKey: []
+      responses:
+        '200':
+          description: List of team members
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Sale'
+
+  /rest/v1/sales/{id}:
+    get:
+      tags:
+        - Supabase REST - Sales
+      summary: Get a team member by ID
+      operationId: getSale
+      security:
+        - bearerAuth: []
+        - apiKey: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Team member details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Sale'
+
+  # Organizations
+  /rest/v1/organizations:
+    get:
+      tags:
+        - Supabase REST - Organizations
+      summary: List organizations
+      operationId: listOrganizations
+      security:
+        - bearerAuth: []
+        - apiKey: []
+      parameters:
+        - name: select
+          in: query
+          schema:
+            type: string
+            default: "*"
+        - name: order
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: List of organizations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Organization'
+
+    post:
+      tags:
+        - Supabase REST - Organizations
+      summary: Create organization
+      operationId: createOrganization
+      security:
+        - bearerAuth: []
+        - apiKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+              properties:
+                name:
+                  type: string
+                settings:
+                  type: object
+                  nullable: true
+                logo_light:
+                  type: string
+                  format: uri
+                  nullable: true
+                logo_dark:
+                  type: string
+                  format: uri
+                  nullable: true
+      responses:
+        '201':
+          description: Organization created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Organization'
+
+  /rest/v1/organizations/{id}:
+    get:
+      tags:
+        - Supabase REST - Organizations
+      summary: Get organization by ID
+      operationId: getOrganization
+      security:
+        - bearerAuth: []
+        - apiKey: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Organization details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Organization'
+
+    patch:
+      tags:
+        - Supabase REST - Organizations
+      summary: Update organization
+      operationId: updateOrganizationRest
+      security:
+        - bearerAuth: []
+        - apiKey: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                settings:
+                  type: object
+                  nullable: true
+                logo_light:
+                  type: string
+                  format: uri
+                  nullable: true
+                logo_dark:
+                  type: string
+                  format: uri
+                  nullable: true
+      responses:
+        '200':
+          description: Organization updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Organization'
+
+    delete:
+      tags:
+        - Supabase REST - Organizations
+      summary: Delete organization
+      operationId: deleteOrganization
+      security:
+        - bearerAuth: []
+        - apiKey: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Organization deleted
+
+  # API Keys
+  /rest/v1/api_keys:
+    get:
+      tags:
+        - Supabase REST - API Keys
+      summary: List API keys (admin only)
+      operationId: listApiKeys
+      security:
+        - bearerAuth: []
+        - apiKey: []
+      responses:
+        '200':
+          description: List of API keys
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ApiKey'
+
+  # ============ EDGE FUNCTIONS ============
+
+  /organizations:
+    get:
+      tags:
+        - Edge Functions - Organizations
+      summary: Get current organization
+      operationId: getMyOrganization
+      description: Fetches the authenticated user's organization with all settings
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Organization details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Organization'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    patch:
+      tags:
+        - Edge Functions - Organizations
+      summary: Update organization (admin only)
+      operationId: updateMyOrganization
+      description: Update organization name, settings, and logos
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  example: Acme Sales
+                settings:
+                  type: object
+                  description: CRM configuration settings
+                  nullable: true
+                logo_light:
+                  type: string
+                  format: uri
+                  nullable: true
+                logo_dark:
+                  type: string
+                  format: uri
+                  nullable: true
+      responses:
+        '200':
+          description: Organization updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Organization'
+        '401':
+          description: Not authorized (admin required)
+        '400':
+          description: Invalid input
+
+  /users:
+    post:
+      tags:
+        - Edge Functions - Users
+      summary: Invite a new team member (admin only)
+      operationId: inviteUser
+      description: Create a new user account and send invitation email
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - first_name
+                - last_name
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  description: If not provided, invitation email is sent
+                first_name:
+                  type: string
+                last_name:
+                  type: string
+                administrator:
+                  type: boolean
+                  default: false
+                disabled:
+                  type: boolean
+                  default: false
+      responses:
+        '200':
+          description: User created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Sale'
+        '401':
+          description: Unauthorized (admin required)
+        '500':
+          description: Failed to create user
+
+    patch:
+      tags:
+        - Edge Functions - Users
+      summary: Update team member
+      operationId: updateUser
+      description: Update user profile and permissions (admin can change all, users can self-update)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                sales_id:
+                  type: integer
+                  description: ID of team member to update
+                email:
+                  type: string
+                  format: email
+                first_name:
+                  type: string
+                last_name:
+                  type: string
+                avatar:
+                  type: string
+                  format: uri
+                administrator:
+                  type: boolean
+                  description: Admin only
+                disabled:
+                  type: boolean
+                  description: Admin only
+      responses:
+        '200':
+          description: User updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Sale'
+        '401':
+          description: Unauthorized
+        '404':
+          description: User not found
+
+  /updatePassword:
+    patch:
+      tags:
+        - Edge Functions - Users
+      summary: Request password reset
+      operationId: updatePassword
+      description: Send password reset email to authenticated user
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Password reset email sent
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+        '401':
+          description: Unauthorized
+
+  /mergeContacts:
+    post:
+      tags:
+        - Edge Functions - Contacts
+      summary: Merge two contacts
+      operationId: mergeContacts
+      description: |
+        Merge a loser contact into a winner contact. This operation:
+        - Combines emails and phone numbers
+        - Reassigns all tasks and notes to winner
+        - Updates deals to reference winner instead of loser
+        - Deletes the loser contact
+        - All within a database transaction
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - loserId
+                - winnerId
+              properties:
+                loserId:
+                  type: integer
+                  description: Contact to merge into winner
+                winnerId:
+                  type: integer
+                  description: Contact to keep (receives merged data)
+      responses:
+        '200':
+          description: Contacts merged successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  winnerId:
+                    type: integer
+        '400':
+          description: Missing or invalid IDs
+        '401':
+          description: Unauthorized
+        '500':
+          description: Merge failed
+
+  /api-keys:
+    get:
+      tags:
+        - Edge Functions - API Management
+      summary: List API keys
+      operationId: listMyApiKeys
+      description: Get all API keys for current organization (admin only)
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of API keys
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ApiKey'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Admin access required
+
+    post:
+      tags:
+        - Edge Functions - API Management
+      summary: Create API key
+      operationId: createApiKey
+      description: Create new organization-scoped API key (admin only)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - type
+              properties:
+                name:
+                  type: string
+                  example: Integration Key
+                type:
+                  type: string
+                  enum: [organization, master]
+                  description: Only 'organization' can be created via UI
+                expires_at:
+                  type: string
+                  format: date-time
+                  nullable: true
+                  description: Optional expiration date
+      responses:
+        '200':
+          description: API key created (plaintext only on creation)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  key:
+                    type: string
+                    example: ak_org_abcdef1234567890
+                    description: Only returned once - store securely
+                  id:
+                    type: integer
+                  key_prefix:
+                    type: string
+                  type:
+                    type: string
+                  name:
+                    type: string
+                  created_at:
+                    type: string
+                    format: date-time
+        '400':
+          description: Invalid key type
+        '401':
+          description: Unauthorized
+        '403':
+          description: Admin access required
+
+    delete:
+      tags:
+        - Edge Functions - API Management
+      summary: Revoke API key
+      operationId: revokeApiKey
+      description: Revoke (disable) an API key (admin only)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - id
+              properties:
+                id:
+                  type: integer
+      responses:
+        '200':
+          description: API key revoked
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+        '401':
+          description: Unauthorized
+
+  # ============ API GATEWAY ============
+
+  /api-gateway:
+    get:
+      tags:
+        - API Gateway
+      summary: Query resources (API key required)
+      operationId: apiGatewayQuery
+      description: |
+        Generic CRUD endpoint for querying any resource via API key.
+
+        **Organization Isolation**: Organization-scoped keys automatically filter by organization_id.
+        Master keys have access to all data.
+
+        **Rate Limiting**: 100 requests per minute per API key.
+      security:
+        - apiKey: []
+      parameters:
+        - name: resource
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [contacts, companies, deals, tasks, contact_notes, deal_notes, tags, sales]
+          description: Resource to query
+        - name: select
+          in: query
+          schema:
+            type: string
+            default: "*"
+          description: Columns to return
+        - name: order
+          in: query
+          schema:
+            type: string
+          description: Order by column
+        - name: limit
+          in: query
+          schema:
+            type: integer
+          description: Max rows
+      responses:
+        '200':
+          description: Query results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+        '400':
+          description: Missing resource parameter
+        '401':
+          description: Invalid or expired API key
+        '403':
+          description: Insufficient scope (read required)
+        '429':
+          description: Rate limit exceeded (100 req/min)
+
+    post:
+      tags:
+        - API Gateway
+      summary: Create resource (API key required)
+      operationId: apiGatewayCreate
+      security:
+        - apiKey: []
+      parameters:
+        - name: resource
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [contacts, companies, deals, tasks, contact_notes, deal_notes, tags]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Resource created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+        '400':
+          description: Invalid request
+        '403':
+          description: Write scope required
+
+    patch:
+      tags:
+        - API Gateway
+      summary: Update resource (API key required)
+      operationId: apiGatewayUpdate
+      security:
+        - apiKey: []
+      parameters:
+        - name: resource
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: id
+          in: query
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Resource updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+
+    delete:
+      tags:
+        - API Gateway
+      summary: Delete resource (API key required)
+      operationId: apiGatewayDelete
+      security:
+        - apiKey: []
+      parameters:
+        - name: resource
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: id
+          in: query
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Resource deleted
+
+  # ============ WEBHOOKS ============
+
+  /postmark:
+    post:
+      tags:
+        - Edge Functions - External
+      summary: Postmark inbound email webhook
+      operationId: postmarkWebhook
+      description: |
+        Public webhook endpoint for receiving inbound emails from Postmark.
+
+        **Security**:
+        - IP whitelisting via x-forwarded-for header
+        - Basic authentication (username/password)
+        - Request signature validation
+
+        **Behavior**:
+        - Extracts email details and contact information
+        - Automatically creates notes linked to contacts
+        - Returns 403 on validation failures (non-retryable)
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                ToFull:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      Email:
+                        type: string
+                      Name:
+                        type: string
+                FromFull:
+                  type: object
+                  properties:
+                    Email:
+                      type: string
+                    Name:
+                      type: string
+                Subject:
+                  type: string
+                TextBody:
+                  type: string
+      responses:
+        '200':
+          description: Email processed successfully
+        '401':
+          description: Unauthorized (IP not whitelisted or auth failed)
+        '403':
+          description: Invalid email data (non-retryable)
+        '405':
+          description: Method not allowed
+
