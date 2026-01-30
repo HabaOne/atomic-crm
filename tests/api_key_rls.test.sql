@@ -3,6 +3,9 @@
 
 BEGIN;
 
+-- TAP output plan
+SELECT '1..10';
+
 -- Clean up any existing test data
 DELETE FROM contact_notes WHERE contact_id IN (9991, 9992);
 DELETE FROM contacts WHERE id IN (9991, 9992);
@@ -69,6 +72,7 @@ BEGIN
 
   RAISE NOTICE 'Test 1 Passed: Org API key sees only own org data';
 END $$;
+SELECT 'ok 1 - Org API key sees only own org data';
 
 -- ========================================
 -- Test 2: Master API key bypasses tenant isolation (SELECT)
@@ -89,6 +93,7 @@ BEGIN
 
   RAISE NOTICE 'Test 2 Passed: Master API key sees all org data';
 END $$;
+SELECT 'ok 2 - Master API key sees all org data';
 
 -- ========================================
 -- Test 3: Organization API key cannot see other org's data
@@ -113,6 +118,7 @@ BEGIN
 
   RAISE NOTICE 'Test 3 Passed: Org API key cannot see other org data';
 END $$;
+SELECT 'ok 3 - Org API key cannot see other org data';
 
 -- ========================================
 -- Test 4: Session variable isolation between transactions
@@ -144,6 +150,7 @@ BEGIN
 
   RAISE NOTICE 'Test 4 Passed: Session variables properly isolated';
 END $$;
+SELECT 'ok 4 - Session variables properly isolated';
 
 -- ========================================
 -- Test 5: Fallback to JWT when no API key context
@@ -168,6 +175,7 @@ BEGIN
 
   RAISE NOTICE 'Test 5 Passed: Fallback to JWT auth works';
 END $$;
+SELECT 'ok 5 - Fallback to JWT auth works';
 
 -- ========================================
 -- Test 6: Master key can INSERT across organizations
@@ -193,6 +201,7 @@ BEGIN
   -- Clean up
   DELETE FROM contacts WHERE id = new_contact_id;
 END $$;
+SELECT 'ok 6 - Master key can INSERT across orgs';
 
 -- ========================================
 -- Test 7: Organization key cannot UPDATE other org's data
@@ -215,6 +224,7 @@ BEGIN
 
   RAISE NOTICE 'Test 7 Passed: Org key cannot UPDATE other org data';
 END $$;
+SELECT 'ok 7 - Org key cannot UPDATE other org data';
 
 -- ========================================
 -- Test 8: Organization key cannot DELETE other org's data
@@ -236,6 +246,7 @@ BEGIN
 
   RAISE NOTICE 'Test 8 Passed: Org key cannot DELETE other org data';
 END $$;
+SELECT 'ok 8 - Org key cannot DELETE other org data';
 
 -- ========================================
 -- Test 9: Master key returns NULL from get_user_organization_id()
@@ -256,6 +267,7 @@ BEGIN
 
   RAISE NOTICE 'Test 9 Passed: Master key returns NULL org_id';
 END $$;
+SELECT 'ok 9 - Master key returns NULL org_id';
 
 -- ========================================
 -- Test 10: is_master_api_key() function works correctly
@@ -283,6 +295,7 @@ BEGIN
 
   RAISE NOTICE 'Test 10 Passed: is_master_api_key() function works correctly';
 END $$;
+SELECT 'ok 10 - is_master_api_key() function works correctly';
 
 -- ========================================
 -- Clean up
