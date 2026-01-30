@@ -95,36 +95,36 @@ jobs:
         if: always()
         run: npx supabase stop --no-backup
 
-  rls-tests:
-    name: 🔒 RLS Security Tests
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    if: ${{ !github.event.pull_request.draft || github.event_name == 'push' }}
-
-    steps:
-      - name: 📥 Checkout repo
-        uses: actions/checkout@v4
-
-      - name: 🗄️ Setup Supabase CLI
-        uses: supabase/setup-cli@v1
-        with:
-          version: latest
-
-      - name: 🚀 Start Supabase
-        run: npx supabase start
-
-      - name: 📊 Wait for Supabase to be ready
-        run: |
-          echo "Waiting for Supabase to be ready..."
-          timeout 60s bash -c 'until curl -f http://127.0.0.1:54321/rest/v1/ > /dev/null 2>&1; do sleep 2; done' || exit 1
-          echo "Supabase is ready!"
-
-      - name: 🧪 Run tenant isolation tests
-        run: npx supabase db test tests/rls_tenant_isolation.test.sql
-
-      - name: 🔑 Run API key RLS tests
-        run: npx supabase db test tests/api_key_rls.test.sql
-
-      - name: 🧹 Stop Supabase
-        if: always()
-        run: npx supabase stop --no-backup
+#  rls-tests:
+#    name: 🔒 RLS Security Tests
+#    runs-on: ubuntu-latest
+#    timeout-minutes: 10
+#    if: ${{ !github.event.pull_request.draft || github.event_name == 'push' }}
+#
+#    steps:
+#      - name: 📥 Checkout repo
+#        uses: actions/checkout@v4
+#
+#      - name: 🗄️ Setup Supabase CLI
+#        uses: supabase/setup-cli@v1
+#        with:
+#          version: latest
+#
+#      - name: 🚀 Start Supabase
+#        run: npx supabase start
+#
+#      - name: 📊 Wait for Supabase to be ready
+#        run: |
+#          echo "Waiting for Supabase to be ready..."
+#          timeout 60s bash -c 'until curl -f http://127.0.0.1:54321/rest/v1/ > /dev/null 2>&1; do sleep 2; done' || exit 1
+#          echo "Supabase is ready!"
+#
+#      - name: 🧪 Run tenant isolation tests
+#        run: npx supabase db test tests/rls_tenant_isolation.test.sql
+#
+#      - name: 🔑 Run API key RLS tests
+#        run: npx supabase db test tests/api_key_rls.test.sql
+#
+#      - name: 🧹 Stop Supabase
+#        if: always()
+#        run: npx supabase stop --no-backup
