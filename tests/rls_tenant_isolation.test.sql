@@ -3,6 +3,9 @@
 
 BEGIN;
 
+-- TAP output plan
+SELECT '1..11';
+
 -- Clean up any existing test data (as superuser)
 DELETE FROM contact_notes WHERE contact_id IN (9991, 9992);
 DELETE FROM contacts WHERE id IN (9991, 9992);
@@ -89,6 +92,7 @@ BEGIN
 
   RAISE NOTICE 'Test 1 Passed: get_user_organization_id() returns correct org';
 END $$;
+SELECT 'ok 1 - get_user_organization_id() returns correct org';
 
 -- ========================================
 -- Test 2: SELECT isolation - User 1 can only see Org 1 data
@@ -118,6 +122,7 @@ BEGIN
 
   RAISE NOTICE 'Test 2 Passed: SELECT properly isolated by organization';
 END $$;
+SELECT 'ok 2 - SELECT properly isolated by organization';
 
 -- ========================================
 -- Test 3: INSERT isolation - Cannot insert into another org
@@ -146,6 +151,7 @@ BEGIN
 
   RAISE NOTICE 'Test 3 Passed: INSERT properly blocked cross-tenant';
 END $$;
+SELECT 'ok 3 - INSERT properly blocked cross-tenant';
 
 -- ========================================
 -- Test 4: UPDATE isolation - Cannot update another org's data
@@ -176,6 +182,7 @@ BEGIN
 
   RAISE NOTICE 'Test 4 Passed: UPDATE properly blocked cross-tenant';
 END $$;
+SELECT 'ok 4 - UPDATE properly blocked cross-tenant';
 
 -- ========================================
 -- Test 5: DELETE isolation - Cannot delete another org's data
@@ -210,6 +217,7 @@ BEGIN
 
   RAISE NOTICE 'Test 5 Passed: DELETE properly blocked cross-tenant';
 END $$;
+SELECT 'ok 5 - DELETE properly blocked cross-tenant';
 
 -- ========================================
 -- Test 6: Views respect tenant isolation
@@ -232,6 +240,7 @@ BEGIN
 
   RAISE NOTICE 'Test 6 Passed: Views properly isolated by organization';
 END $$;
+SELECT 'ok 6 - Views properly isolated by organization';
 
 -- ========================================
 -- Test 7: Organizations table isolation
@@ -261,6 +270,7 @@ BEGIN
 
   RAISE NOTICE 'Test 7 Passed: Organizations table properly isolated';
 END $$;
+SELECT 'ok 7 - Organizations table properly isolated';
 
 -- ========================================
 -- Test 8: All tables have organization_id
@@ -288,6 +298,7 @@ BEGIN
 
   RAISE NOTICE 'Test 8 Passed: All tables have organization_id column';
 END $$;
+SELECT 'ok 8 - All tables have organization_id column';
 
 -- ========================================
 -- Test 9: All tables have organization_id indexes
@@ -317,6 +328,7 @@ BEGIN
 
   RAISE NOTICE 'Test 9 Passed: All tables have organization_id indexes';
 END $$;
+SELECT 'ok 9 - All tables have organization_id indexes';
 
 -- ========================================
 -- Test 10: Trigger auto-populates organization_id
@@ -350,6 +362,42 @@ BEGIN
 
   RAISE NOTICE 'Test 10 Passed: Trigger auto-populates organization_id correctly';
 END $$;
+SELECT 'ok 10 - Trigger auto-populates organization_id correctly';
+
+-- ========================================
+-- Test 11: Tags trigger auto-populates organization_id
+-- ========================================
+DO $$
+DECLARE
+  test_tag_id bigint;
+  org_id bigint;
+BEGIN
+  -- Set JWT claim to simulate user 1
+  PERFORM set_config('request.jwt.claims', json_build_object('sub', 'f0000000-0000-0000-0000-000000000001')::text, true);
+
+  -- Insert tag without specifying organization_id
+  -- This tests the fix for the contact import bug: missing trigger on tags table
+  INSERT INTO tags (name, color)
+  VALUES ('Auto Tag Test', '#000000')
+  RETURNING id INTO test_tag_id;
+
+  -- Check if organization_id was auto-populated by the trigger
+  SELECT organization_id INTO org_id FROM tags WHERE id = test_tag_id;
+
+  IF org_id IS NULL THEN
+    RAISE EXCEPTION 'Test 11 Failed: organization_id was not auto-populated for tags (trigger missing or failed)';
+  END IF;
+
+  IF org_id != 9991 THEN
+    RAISE EXCEPTION 'Test 11 Failed: organization_id was auto-populated with wrong value: % (expected 9991)', org_id;
+  END IF;
+
+  -- Clean up
+  DELETE FROM tags WHERE id = test_tag_id;
+
+  RAISE NOTICE 'Test 11 Passed: Tags trigger auto-populates organization_id correctly';
+END $$;
+SELECT 'ok 11 - Tags trigger auto-populates organization_id correctly';
 
 -- ========================================
 -- Switch back to superuser for cleanup
