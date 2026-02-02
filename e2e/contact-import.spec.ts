@@ -68,8 +68,15 @@ test.describe('Contact Import - Tags Trigger Fix', () => {
     const importDialogButton = page.locator('[role="dialog"] button:has-text("Import")');
     await importDialogButton.click({ timeout: 10000 });
 
-    // Wait for import to process
-    await page.waitForTimeout(5000);
+    // Wait for import to complete - look for success message or close button
+    await expect(page.locator('[role="alert"]:has-text("import complete")')).toBeVisible({ timeout: 30000 });
+
+    // Close the dialog after import completes (use first() since there are 2 Close buttons)
+    const closeButton = page.locator('[role="dialog"] button:has-text("Close")').first();
+    await closeButton.click({ timeout: 5000 });
+
+    // Wait for dialog to close
+    await expect(page.locator('[role="dialog"]')).not.toBeVisible({ timeout: 5000 });
 
     // #then - Verify import succeeded by checking for contacts in the list
     // Navigate to contacts page to verify import
@@ -88,9 +95,13 @@ test.describe('Contact Import - Tags Trigger Fix', () => {
     // 2. Have incomplete data
 
     // Verify contacts list is visible (data loaded successfully)
-    const contactsTable = page.locator('table, [role="grid"], .contacts-list').first();
-    const isVisible = await contactsTable.isVisible().catch(() => false);
-    expect(isVisible || (await page.locator('role=row').count()) > 0).toBeTruthy();
+    // The contacts list uses div.divide-y with Link elements, not a table
+    const contactsListContainer = page.locator('.divide-y').first();
+    const isListVisible = await contactsListContainer.isVisible().catch(() => false);
+    // Also check for contact links (the list items are Link elements to /contacts/*)
+    const contactLinks = page.locator('a[href*="/contacts/"]');
+    const hasContactLinks = (await contactLinks.count()) > 0;
+    expect(isListVisible || hasContactLinks).toBeTruthy();
 
     await logout(page);
   });
@@ -116,7 +127,13 @@ test.describe('Contact Import - Tags Trigger Fix', () => {
     await page.locator('input[type="file"]').setInputFiles(csvPath);
     await page.waitForTimeout(500);
     await page.locator('[role="dialog"] button:has-text("Import")').click({ timeout: 10000 });
-    await page.waitForTimeout(5000);
+
+    // Wait for import to complete
+    await expect(page.locator('[role="alert"]:has-text("import complete")')).toBeVisible({ timeout: 30000 });
+
+    // Close the dialog (use first() since there are 2 Close buttons)
+    await page.locator('[role="dialog"] button:has-text("Close")').first().click({ timeout: 5000 });
+    await expect(page.locator('[role="dialog"]')).not.toBeVisible({ timeout: 5000 });
 
     // #then - Verify import completed successfully
     await page.goto('/#/contacts');
@@ -149,8 +166,12 @@ test.describe('Contact Import - Tags Trigger Fix', () => {
     await page.waitForTimeout(500);
     await page.locator('[role="dialog"] button:has-text("Import")').click({ timeout: 10000 });
 
-    // Wait for batch processing to complete
-    await page.waitForTimeout(8000);
+    // Wait for import to complete (batch may take longer)
+    await expect(page.locator('[role="alert"]:has-text("import complete")')).toBeVisible({ timeout: 45000 });
+
+    // Close the dialog (use first() since there are 2 Close buttons)
+    await page.locator('[role="dialog"] button:has-text("Close")').first().click({ timeout: 5000 });
+    await expect(page.locator('[role="dialog"]')).not.toBeVisible({ timeout: 5000 });
 
     // #then - Verify batch import succeeded
     await page.goto('/#/contacts');

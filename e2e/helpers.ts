@@ -145,7 +145,19 @@ export async function logout(page: Page): Promise<void> {
     return;
   }
 
-  await page.click('text="Logout", text="Sign out", text="Log out"');
+  // Try different logout button text variants
+  const logoutSelectors = ['text="Logout"', 'text="Sign out"', 'text="Log out"'];
+  for (const selector of logoutSelectors) {
+    try {
+      if (await page.locator(selector).isVisible({ timeout: 1000 })) {
+        await page.locator(selector).click();
+        break;
+      }
+    } catch (e) {
+      continue;
+    }
+  }
+
   await page.waitForURL('/#/login', { timeout: 5000 });
 }
 
