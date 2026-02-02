@@ -3,6 +3,114 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 import { supabaseAdmin } from "../_shared/supabaseAdmin.ts";
 import { corsHeaders, createErrorResponse } from "../_shared/utils.ts";
 
+interface ApiKeyValidation {
+  isValid: boolean;
+  type: "master" | "organization" | null;
+  organizationId: number | null;
+  scopes: string[];
+}
+
+async function hashApiKey(key: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(key);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+async function validateApiKey(authHeader: string): Promise<ApiKeyValidation> {
+  const key = authHeader.replace(/^Bearer\s+/i, "");
+
+  if (!key.startsWith("ak_")) {
+    return { isValid: false, type: null, organizationId: null, scopes: [] };
+  }
+
+  const keyHash = await hashApiKey(key);
+
+  const { data: apiKeyRecord, error } = await supabaseAdmin
+    .from("api_keys")
+    .select("type, organization_id, scopes, revoked_at, expires_at")
+    .eq("key_hash", keyHash)
+    .single();
+
+  if (error || !apiKeyRecord) {
+    return { isValid: false, type: null, organizationId: null, scopes: [] };
+  }
+
+  if (apiKeyRecord.revoked_at) {
+    return { isValid: false, type: null, organizationId: null, scopes: [] };
+  }
+
+  if (
+    apiKeyRecord.expires_at &&
+    new Date(apiKeyRecord.expires_at) < new Date()
+  ) {
+    return { isValid: false, type: null, organizationId: null, scopes: [] };
+  }
+
+  supabaseAdmin
+    .from("api_keys")
+    .update({ last_used_at: new Date().toISOString() })
+    .eq("key_hash", keyHash)
+    .then(() => {});
+
+  return {
+    isValid: true,
+    type: apiKeyRecord.type as "master" | "organization",
+    organizationId: apiKeyRecord.organization_id,
+    scopes: apiKeyRecord.scopes || ["read", "write"],
+  };
+}
+
+async function createServiceAccount(req: Request): Promise<Response> {
+  const { organization_id, name } = await req.json();
+
+  if (!organization_id) {
+    return createErrorResponse(400, "organization_id is required");
+  }
+
+  const { data: org, error: orgError } = await supabaseAdmin
+    .from("organizations")
+    .select("id")
+    .eq("id", organization_id)
+    .single();
+
+  if (orgError || !org) {
+    return createErrorResponse(404, "Organization not found");
+  }
+
+  const serviceEmail = `service-${organization_id}-${Date.now()}@haba.services`;
+
+  const { data, error } = await supabaseAdmin.auth.admin.createUser({
+    email: serviceEmail,
+    email_confirm: true,
+    user_metadata: {
+      organization_id,
+      is_service_account: true,
+      first_name: name || "HABA",
+      last_name: "Service Account",
+    },
+  });
+
+  if (error) {
+    console.error("Failed to create service account:", error);
+    return createErrorResponse(500, error.message);
+  }
+
+  return new Response(
+    JSON.stringify({
+      user_id: data.user.id,
+      organization_id,
+      email: serviceEmail,
+      is_service_account: true,
+    }),
+    {
+      status: 201,
+      headers: { "Content-Type": "application/json", ...corsHeaders },
+    },
+  );
+}
+
 async function updateSaleDisabled(user_id: string, disabled: boolean) {
   return await supabaseAdmin
     .from("sales")
@@ -184,7 +292,32 @@ Deno.serve(async (req: Request) => {
     });
   }
 
-  const authHeader = req.headers.get("Authorization")!;
+  const authHeader = req.headers.get("Authorization");
+  if (!authHeader) {
+    return createErrorResponse(401, "Missing Authorization header");
+  }
+
+  if (authHeader.includes("ak_master_") || authHeader.includes("ak_org_")) {
+    const validation = await validateApiKey(authHeader);
+
+    if (!validation.isValid) {
+      return createErrorResponse(401, "Invalid or expired API key");
+    }
+
+    if (validation.type !== "master") {
+      return createErrorResponse(
+        403,
+        "Only master API keys can create service accounts",
+      );
+    }
+
+    if (req.method === "POST") {
+      return createServiceAccount(req);
+    }
+
+    return createErrorResponse(405, "Master key only supports POST method");
+  }
+
   const localClient = createClient(
     Deno.env.get("SUPABASE_URL") ?? "",
     Deno.env.get("SUPABASE_ANON_KEY") ?? "",
