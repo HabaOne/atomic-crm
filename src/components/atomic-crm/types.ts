@@ -99,6 +99,17 @@ export type Contact = {
   status: string;
   background: string;
   phone_jsonb: PhoneNumberAndType[];
+  department?: string | null;
+  whatsapp_number?: string | null;
+  twitter_url?: string | null;
+  instagram_url?: string | null;
+  telegram_handle?: string | null;
+  other_handles?: string[];
+  country?: string | null;
+  city?: string | null;
+  timezone?: string | null;
+  preferred_language?: string | null;
+  preferred_channel?: string | null;
   nb_tasks?: number;
   company_name?: string;
 } & Pick<RaRecord, "id">;
