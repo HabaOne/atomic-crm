@@ -413,6 +413,10 @@
           "type": "registry:component"
         },
         {
+          "path": "src/components/atomic-crm/login/authHashRedirect.test.ts",
+          "type": "registry:component"
+        },
+        {
           "path": "src/components/atomic-crm/login/StartPage.tsx",
           "type": "registry:component"
         },

@@ -49,9 +49,11 @@ async function inviteUser(req: Request, currentUserSale: any) {
     return createErrorResponse(401, "Not Authorized");
   }
 
+  // An empty password field means "send an invitation email"; GoTrue would
+  // reject an empty string as a weak password.
   const { data, error: userError } = await supabaseAdmin.auth.admin.createUser({
     email,
-    password,
+    password: password || undefined,
     email_confirm: !!password,
     user_metadata: {
       first_name,

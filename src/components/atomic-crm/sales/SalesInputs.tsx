@@ -22,7 +22,6 @@ export function SalesInputs() {
         <TextInput
           source="password"
           type="password"
-          validate={required()}
           helperText="Leave blank to send invitation email. Provide password for testing."
         />
       )}
