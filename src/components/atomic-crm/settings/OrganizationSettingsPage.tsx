@@ -1,6 +1,12 @@
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Save } from "lucide-react";
-import { Form, useDataProvider, useNotify, usePermissions } from "ra-core";
+import {
+  Form,
+  useDataProvider,
+  useNotify,
+  usePermissions,
+  useTranslate,
+} from "ra-core";
 import { Navigate } from "react-router";
 import { TextInput } from "@/components/admin/text-input";
 import { Button } from "@/components/ui/button";
@@ -9,14 +15,22 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { useOrganization } from "../root/OrganizationContext";
 import type { Organization } from "../root/OrganizationContext";
+import { ContactStagesInput } from "./ContactStagesInput";
+import { formatJson, formatList, parseJson, parseList } from "./settingsFormat";
+import {
+  fromContactStageFormValues,
+  toContactStageFormValues,
+} from "./contactStagesForm";
 
 export const OrganizationSettingsPage = () => {
   OrganizationSettingsPage.path = "/settings/organization";
 
   const { organization, loading, refetch } = useOrganization();
-  const { permissions } = usePermissions();
+  const { permissions, isPending: permissionsPending } = usePermissions();
   const notify = useNotify();
   const dataProvider = useDataProvider();
+  const translate = useTranslate();
+  const queryClient = useQueryClient();
 
   const { mutate, isPending } = useMutation({
     mutationKey: ["organization", organization?.id],
@@ -35,6 +49,8 @@ export const OrganizationSettingsPage = () => {
     },
     onSuccess: () => {
       refetch();
+      // the board and the dashboard read the stages from this cache
+      queryClient.invalidateQueries({ queryKey: ["organizations"] });
       notify("Organization settings updated", { type: "success" });
     },
     onError: (error) => {
@@ -42,6 +58,10 @@ export const OrganizationSettingsPage = () => {
       notify("Failed to update organization settings", { type: "error" });
     },
   });
+
+  // Wait for the permissions: redirecting before they load sends admins
+  // away on a direct page load
+  if (permissionsPending) return null;
 
   // Only admins can access this page
   if (!permissions?.administrator) {
@@ -65,7 +85,25 @@ export const OrganizationSettingsPage = () => {
   }
 
   const handleSubmit = (values: Partial<Organization>) => {
-    mutate(values);
+    const settings = values.settings as Record<string, unknown> | undefined;
+    mutate({
+      ...values,
+      settings: {
+        ...settings,
+        contactStages: fromContactStageFormValues(settings?.contactStages),
+      } as Organization["settings"],
+    });
+  };
+
+  const defaultValues = {
+    ...organization,
+    settings: {
+      ...organization.settings,
+      contactStages: toContactStageFormValues(
+        (organization.settings as Record<string, unknown> | undefined)
+          ?.contactStages,
+      ),
+    },
   };
 
   return (
@@ -78,7 +116,7 @@ export const OrganizationSettingsPage = () => {
       </div>
 
       <Form
-        defaultValues={organization}
+        defaultValues={defaultValues}
         onSubmit={handleSubmit}
         className="space-y-8"
       >
@@ -108,6 +146,8 @@ export const OrganizationSettingsPage = () => {
               <Label>Available Sectors (comma-separated)</Label>
               <TextInput
                 source="settings.companySectors"
+                format={formatList}
+                parse={parseList}
                 label={false}
                 multiline
                 rows={3}
@@ -126,6 +166,8 @@ export const OrganizationSettingsPage = () => {
               <Label>Deal Categories (comma-separated)</Label>
               <TextInput
                 source="settings.dealCategories"
+                format={formatList}
+                parse={parseList}
                 label={false}
                 multiline
                 rows={3}
@@ -138,6 +180,8 @@ export const OrganizationSettingsPage = () => {
               <Label>Deal Pipeline Statuses (comma-separated)</Label>
               <TextInput
                 source="settings.dealPipelineStatuses"
+                format={formatList}
+                parse={parseList}
                 label={false}
                 multiline
                 rows={2}
@@ -151,12 +195,26 @@ export const OrganizationSettingsPage = () => {
               <Label>Deal Stages (JSON format)</Label>
               <TextInput
                 source="settings.dealStages"
+                format={formatJson}
+                parse={parseJson}
                 label={false}
                 multiline
                 rows={5}
                 helperText='Example: [{"value": "opportunity", "label": "Opportunity"}]'
               />
             </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>{translate("crm.settings.contact_stages")}</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              {translate("crm.settings.contact_stages_description")}
+            </p>
+          </CardHeader>
+          <CardContent>
+            <ContactStagesInput />
           </CardContent>
         </Card>
 
@@ -169,6 +227,8 @@ export const OrganizationSettingsPage = () => {
               <Label>Note Statuses (JSON format)</Label>
               <TextInput
                 source="settings.noteStatuses"
+                format={formatJson}
+                parse={parseJson}
                 label={false}
                 multiline
                 rows={5}
@@ -187,6 +247,8 @@ export const OrganizationSettingsPage = () => {
               <Label>Available Task Types (comma-separated)</Label>
               <TextInput
                 source="settings.taskTypes"
+                format={formatList}
+                parse={parseList}
                 label={false}
                 multiline
                 rows={3}
@@ -205,6 +267,8 @@ export const OrganizationSettingsPage = () => {
               <Label>Gender Options (JSON format)</Label>
               <TextInput
                 source="settings.contactGender"
+                format={formatJson}
+                parse={parseJson}
                 label={false}
                 multiline
                 rows={5}

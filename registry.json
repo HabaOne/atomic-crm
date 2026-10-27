@@ -93,11 +93,27 @@
           "type": "registry:component"
         },
         {
+          "path": "src/components/atomic-crm/settings/settingsFormat.ts",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/settings/settingsFormat.test.ts",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/settings/contactStagesForm.ts",
+          "type": "registry:component"
+        },
+        {
           "path": "src/components/atomic-crm/settings/SettingsPage.tsx",
           "type": "registry:component"
         },
         {
           "path": "src/components/atomic-crm/settings/OrganizationSettingsPage.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/settings/ContactStagesInput.tsx",
           "type": "registry:component"
         },
         {
@@ -146,6 +162,22 @@
         },
         {
           "path": "src/components/atomic-crm/root/CRM.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/root/i18n/raGerman.ts",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/root/i18n/messages.test.ts",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/root/i18n/en.ts",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/root/i18n/de.ts",
           "type": "registry:component"
         },
         {
@@ -333,7 +365,15 @@
           "type": "registry:component"
         },
         {
+          "path": "src/components/atomic-crm/notes/LogContactButton.tsx",
+          "type": "registry:component"
+        },
+        {
           "path": "src/components/atomic-crm/misc/usePapaParse.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/misc/useDateLocale.ts",
           "type": "registry:component"
         },
         {
@@ -469,7 +509,19 @@
           "type": "registry:component"
         },
         {
+          "path": "src/components/atomic-crm/dashboard/notContactedFilter.ts",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/dashboard/notContactedFilter.test.ts",
+          "type": "registry:component"
+        },
+        {
           "path": "src/components/atomic-crm/dashboard/Welcome.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/dashboard/TodayAgenda.tsx",
           "type": "registry:component"
         },
         {
@@ -482,6 +534,10 @@
         },
         {
           "path": "src/components/atomic-crm/dashboard/TasksList.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/dashboard/NotContacted.tsx",
           "type": "registry:component"
         },
         {
@@ -510,6 +566,10 @@
         },
         {
           "path": "src/components/atomic-crm/dashboard/Dashboard.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/dashboard/ContactPipeline.tsx",
           "type": "registry:component"
         },
         {
@@ -638,6 +698,70 @@
         },
         {
           "path": "src/components/atomic-crm/companies/AutocompleteCompanyInput.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/board/useContactStages.ts",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/board/useChangeContactStage.ts",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/board/contactStages.ts",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/board/boardLogic.ts",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/board/board.test.ts",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/board/ContactStageSelect.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/board/ContactBoardColumn.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/board/ContactBoardCard.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/board/ContactBoard.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/appointments/slots.ts",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/appointments/slots.test.ts",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/appointments/quickEntry.ts",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/appointments/quickEntry.test.ts",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/appointments/TimeInput.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/appointments/ScheduleDialog.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/appointments/ScheduleButton.tsx",
           "type": "registry:component"
         },
         {

@@ -72,6 +72,18 @@ function mergeContactData(winner: Contact, loser: Contact) {
         : (winner.last_seen ?? loser.last_seen),
     sales_id: winner.sales_id ?? loser.sales_id,
     tags: mergeArraysUnique(winner.tags || [], loser.tags || []),
+    // Keep the winner's pipeline position; fall back to the loser's.
+    ...(winner.lifecycle_stage
+      ? {
+          lifecycle_stage: winner.lifecycle_stage,
+          lifecycle_substatus: winner.lifecycle_substatus,
+          lifecycle_updated_at: winner.lifecycle_updated_at,
+        }
+      : {
+          lifecycle_stage: loser.lifecycle_stage,
+          lifecycle_substatus: loser.lifecycle_substatus,
+          lifecycle_updated_at: loser.lifecycle_updated_at,
+        }),
   };
 }
 

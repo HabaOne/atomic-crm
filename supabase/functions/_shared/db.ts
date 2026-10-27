@@ -35,6 +35,9 @@ export interface ContactsTable {
   company_id: number | null;
   sales_id: number | null;
   linkedin_url: string | null;
+  lifecycle_stage: string | null;
+  lifecycle_substatus: string | null;
+  lifecycle_updated_at: Date | null;
 }
 
 interface TasksTable {
@@ -45,6 +48,8 @@ interface TasksTable {
   due_date: Date;
   done_date: Date | null;
   sales_id: number | null;
+  has_time: boolean;
+  duration_minutes: number | null;
 }
 
 interface ContactNotesTable {

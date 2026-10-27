@@ -101,8 +101,31 @@ const dataProviderWithCustomMethods = {
 
     return baseDataProvider.getOne(resource, params);
   },
+  async update(resource: string, params: UpdateParams) {
+    if (resource === "organizations") {
+      // RLS has no UPDATE policy on organizations; the edge function checks
+      // that the caller is an administrator of that organization.
+      const { name, settings } = params.data;
+      const { data, error } = await supabase.functions.invoke("organizations", {
+        method: "PATCH",
+        body: { name, settings },
+      });
+      if (error) {
+        console.error("organizations.update.error", error);
+        throw new Error("Failed to update the organization");
+      }
+      return { data: data.data };
+    }
+    return baseDataProvider.update(resource, params);
+  },
 
-  async signUp({ email, password, first_name, last_name, organization_name }: SignUpData) {
+  async signUp({
+    email,
+    password,
+    first_name,
+    last_name,
+    organization_name,
+  }: SignUpData) {
     const response = await supabase.auth.signUp({
       email,
       password,

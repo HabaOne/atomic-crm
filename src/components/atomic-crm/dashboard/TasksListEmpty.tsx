@@ -1,6 +1,7 @@
-import { useGetIdentity, useGetList } from "ra-core";
+import { useGetIdentity, useGetList, useTranslate } from "ra-core";
 
 export const TasksListEmpty = () => {
+  const translate = useTranslate();
   const { identity } = useGetIdentity();
 
   const { total } = useGetList(
@@ -16,7 +17,5 @@ export const TasksListEmpty = () => {
 
   if (total) return null;
 
-  return (
-    <p className="text-sm">Tasks added to your contacts will appear here.</p>
-  );
+  return <p className="text-sm">{translate("crm.tasks.empty")}</p>;
 };

@@ -8,6 +8,7 @@ import {
   useGetIdentity,
   useNotify,
   useRecordContext,
+  useTranslate,
   useUpdate,
 } from "ra-core";
 import { useState } from "react";
@@ -32,6 +33,8 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
+import { TimeInput } from "../appointments/TimeInput";
+import { DEFAULT_DURATION_MINUTES, toTaskDueDate } from "../appointments/slots";
 import { contactOptionText } from "../misc/ContactOption";
 import { useConfigurationContext } from "../root/ConfigurationContext";
 
@@ -47,6 +50,7 @@ export const AddTask = ({
   const [update] = useUpdate();
   const notify = useNotify();
   const { taskTypes } = useConfigurationContext();
+  const translate = useTranslate();
   const contact = useRecordContext();
   const [open, setOpen] = useState(false);
   const handleOpen = () => {
@@ -66,7 +70,7 @@ export const AddTask = ({
       previousData: contact.data,
     });
 
-    notify("Task added");
+    notify("crm.tasks.added");
   };
 
   if (!identity) return null;
@@ -86,7 +90,7 @@ export const AddTask = ({
                 <Plus className="w-4 h-4" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent>Create task</TooltipContent>
+            <TooltipContent>{translate("crm.tasks.create")}</TooltipContent>
           </Tooltip>
         </TooltipProvider>
       ) : (
@@ -98,7 +102,7 @@ export const AddTask = ({
             size="sm"
           >
             <Plus className="w-4 h-4" />
-            Add task
+            {translate("crm.tasks.add")}
           </Button>
         </div>
       )}
@@ -111,15 +115,11 @@ export const AddTask = ({
           due_date: new Date().toISOString().slice(0, 10),
           sales_id: identity.id,
         }}
-        transform={(data) => {
-          const dueDate = new Date(data.due_date);
-          dueDate.setHours(0, 0, 0, 0);
-          data.due_date = dueDate.toISOString();
-          return {
-            ...data,
-            due_date: new Date(data.due_date).toISOString(),
-          };
-        }}
+        transform={({ time, ...data }) => ({
+          ...data,
+          ...toTaskDueDate(data.due_date, time),
+          duration_minutes: time ? DEFAULT_DURATION_MINUTES : null,
+        })}
         mutationOptions={{ onSuccess: handleSuccess }}
       >
         <Dialog open={open} onOpenChange={() => setOpen(false)}>
@@ -128,8 +128,8 @@ export const AddTask = ({
               <DialogHeader>
                 <DialogTitle>
                   {!selectContact
-                    ? "Create a new task for "
-                    : "Create a new task"}
+                    ? `${translate("crm.tasks.new_for")} `
+                    : translate("crm.tasks.new")}
                   {!selectContact && (
                     <RecordRepresentation
                       record={contact}
@@ -142,7 +142,7 @@ export const AddTask = ({
                 <TextInput
                   autoFocus
                   source="text"
-                  label="Description"
+                  label="crm.tasks.description"
                   validate={required()}
                   multiline
                   className="m-0"
@@ -154,7 +154,7 @@ export const AddTask = ({
                     reference="contacts_summary"
                   >
                     <AutocompleteInput
-                      label="Contact"
+                      label="crm.schedule.contact"
                       optionText={contactOptionText}
                       helperText={false}
                       validate={required()}
@@ -162,11 +162,16 @@ export const AddTask = ({
                   </ReferenceInput>
                 )}
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-3 gap-4">
                   <DateInput
                     source="due_date"
                     helperText={false}
                     validate={required()}
+                  />
+                  <TimeInput
+                    source="time"
+                    label={translate("crm.tasks.time_optional")}
+                    helperText={false}
                   />
                   <SelectInput
                     source="type"

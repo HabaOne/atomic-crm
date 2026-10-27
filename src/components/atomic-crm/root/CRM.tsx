@@ -40,6 +40,7 @@ import {
   defaultTaskTypes,
   defaultTitle,
 } from "./defaultConfiguration";
+import { ContactBoard } from "../board/ContactBoard";
 import { i18nProvider } from "./i18nProvider";
 import { StartPage } from "../login/StartPage.tsx";
 import { OrganizationSettingsPage } from "../settings/OrganizationSettingsPage";
@@ -155,16 +156,18 @@ export const CRM = ({
         <CustomRoutes>
           <Route path="/settings/api-keys" element={<ApiKeysPage />} />
           <Route path={SettingsPage.path} element={<SettingsPage />} />
+          <Route path={ContactBoard.path} element={<ContactBoard />} />
+          {/* react-admin only reads CustomRoutes that are direct children of
+              Admin, so the provider wraps the page, not the routes */}
+          <Route
+            path={OrganizationSettingsPage.path}
+            element={
+              <OrganizationProvider>
+                <OrganizationSettingsPage />
+              </OrganizationProvider>
+            }
+          />
         </CustomRoutes>
-
-        <OrganizationProvider>
-          <CustomRoutes>
-            <Route
-              path={OrganizationSettingsPage.path}
-              element={<OrganizationSettingsPage />}
-            />
-          </CustomRoutes>
-        </OrganizationProvider>
 
         <Resource name="organizations" />
         <Resource name="deals" {...deals} />

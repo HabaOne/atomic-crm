@@ -1,17 +1,32 @@
 import { endOfYesterday, startOfMonth, startOfWeek, subMonths } from "date-fns";
-import { CheckSquare, Clock, Tag, TrendingUp, Users } from "lucide-react";
-import { FilterLiveForm, useGetIdentity, useGetList } from "ra-core";
+import {
+  CheckSquare,
+  Clock,
+  LayoutGrid,
+  Tag,
+  TrendingUp,
+  Users,
+} from "lucide-react";
+import {
+  FilterLiveForm,
+  useGetIdentity,
+  useGetList,
+  useTranslate,
+} from "ra-core";
 import { ToggleFilterButton } from "@/components/admin/toggle-filter-button";
 import { SearchInput } from "@/components/admin/search-input";
 import { Badge } from "@/components/ui/badge";
 
 import { FilterCategory } from "../filters/FilterCategory";
 import { Status } from "../misc/Status";
+import { useContactStages } from "../board/useContactStages";
 import { useConfigurationContext } from "../root/ConfigurationContext";
 
 export const ContactListFilter = () => {
   const { noteStatuses } = useConfigurationContext();
+  const { stages } = useContactStages();
   const { identity } = useGetIdentity();
+  const translate = useTranslate();
   const { data } = useGetList("tags", {
     pagination: { page: 1, perPage: 10 },
     sort: { field: "name", order: "ASC" },
@@ -20,13 +35,19 @@ export const ContactListFilter = () => {
   return (
     <div className="w-52 min-w-52 order-first pt-0.75 flex flex-col gap-4">
       <FilterLiveForm>
-        <SearchInput source="q" placeholder="Search name, company..." />
+        <SearchInput
+          source="q"
+          placeholder={translate("crm.contacts.search_placeholder")}
+        />
       </FilterLiveForm>
 
-      <FilterCategory label="Last activity" icon={<Clock />}>
+      <FilterCategory
+        label={translate("crm.contacts.last_activity")}
+        icon={<Clock />}
+      >
         <ToggleFilterButton
           className="w-full justify-between"
-          label="Today"
+          label={translate("crm.common.today")}
           value={{
             "last_seen@gte": endOfYesterday().toISOString(),
             "last_seen@lte": undefined,
@@ -34,7 +55,7 @@ export const ContactListFilter = () => {
         />
         <ToggleFilterButton
           className="w-full justify-between"
-          label="This week"
+          label={translate("crm.tasks.this_week")}
           value={{
             "last_seen@gte": startOfWeek(new Date()).toISOString(),
             "last_seen@lte": undefined,
@@ -42,7 +63,7 @@ export const ContactListFilter = () => {
         />
         <ToggleFilterButton
           className="w-full justify-between"
-          label="Before this week"
+          label={translate("crm.contacts.before_this_week")}
           value={{
             "last_seen@gte": undefined,
             "last_seen@lte": startOfWeek(new Date()).toISOString(),
@@ -50,7 +71,7 @@ export const ContactListFilter = () => {
         />
         <ToggleFilterButton
           className="w-full justify-between"
-          label="Before this month"
+          label={translate("crm.contacts.before_this_month")}
           value={{
             "last_seen@gte": undefined,
             "last_seen@lte": startOfMonth(new Date()).toISOString(),
@@ -58,7 +79,7 @@ export const ContactListFilter = () => {
         />
         <ToggleFilterButton
           className="w-full justify-between"
-          label="Before last month"
+          label={translate("crm.contacts.before_last_month")}
           value={{
             "last_seen@gte": undefined,
             "last_seen@lte": subMonths(
@@ -69,7 +90,37 @@ export const ContactListFilter = () => {
         />
       </FilterCategory>
 
-      <FilterCategory label="Status" icon={<TrendingUp />}>
+      <FilterCategory
+        label={translate("crm.board.stage")}
+        icon={<LayoutGrid />}
+      >
+        <ToggleFilterButton
+          className="w-full justify-between"
+          label={translate("crm.dashboard.not_contacted")}
+          value={{ is_contacted: false }}
+        />
+        {stages.map((stage) => (
+          <ToggleFilterButton
+            key={stage.value}
+            className="w-full justify-between"
+            label={
+              <span className="flex items-center gap-2">
+                <span
+                  className="size-2 rounded-full"
+                  style={{ backgroundColor: stage.color }}
+                />
+                {stage.label}
+              </span>
+            }
+            value={{ lifecycle_stage: stage.value }}
+          />
+        ))}
+      </FilterCategory>
+
+      <FilterCategory
+        label={translate("crm.contacts.status")}
+        icon={<TrendingUp />}
+      >
         {noteStatuses.map((status) => (
           <ToggleFilterButton
             key={status.value}
@@ -84,7 +135,7 @@ export const ContactListFilter = () => {
         ))}
       </FilterCategory>
 
-      <FilterCategory label="Tags" icon={<Tag />}>
+      <FilterCategory label={translate("crm.contacts.tags")} icon={<Tag />}>
         {data &&
           data.map((record) => (
             <ToggleFilterButton
@@ -106,18 +157,24 @@ export const ContactListFilter = () => {
           ))}
       </FilterCategory>
 
-      <FilterCategory icon={<CheckSquare />} label="Tasks">
+      <FilterCategory
+        icon={<CheckSquare />}
+        label={translate("crm.contacts.tasks")}
+      >
         <ToggleFilterButton
           className="w-full justify-between"
-          label={"With pending tasks"}
+          label={translate("crm.contacts.with_pending_tasks")}
           value={{ "nb_tasks@gt": 0 }}
         />
       </FilterCategory>
 
-      <FilterCategory icon={<Users />} label="Account Manager">
+      <FilterCategory
+        icon={<Users />}
+        label={translate("crm.contacts.account_manager")}
+      >
         <ToggleFilterButton
           className="w-full justify-between"
-          label={"Me"}
+          label={translate("crm.contacts.me")}
           value={{ sales_id: identity?.id }}
         />
       </FilterCategory>

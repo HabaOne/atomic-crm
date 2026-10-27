@@ -112,6 +112,14 @@ export type Contact = {
   preferred_channel?: string | null;
   nb_tasks?: number;
   company_name?: string;
+  contact_type?: string | null;
+  lifecycle_stage?: string | null;
+  lifecycle_substatus?: string | null;
+  lifecycle_updated_at?: string | null;
+  // Computed by the contacts_summary view
+  company_stages?: string[] | null;
+  last_contacted_at?: string | null;
+  is_contacted?: boolean;
 } & Pick<RaRecord, "id">;
 
 export type ContactNote = {
@@ -121,6 +129,8 @@ export type ContactNote = {
   sales_id: Identifier;
   status: string;
   attachments?: AttachmentNote[];
+  /** Written by the app, e.g. a stage change; does not count as contact */
+  is_system?: boolean;
 } & Pick<RaRecord, "id">;
 
 export type Deal = {
@@ -162,6 +172,8 @@ export type Task = {
   due_date: string;
   done_date?: string | null;
   sales_id?: Identifier;
+  has_time?: boolean;
+  duration_minutes?: number | null;
 } & Pick<RaRecord, "id">;
 
 export type ActivityCompanyCreated = {

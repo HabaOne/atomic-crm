@@ -1,7 +1,8 @@
 import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
-import { Settings, User } from "lucide-react";
-import { CanAccess } from "ra-core";
+import { Building2, Settings, User } from "lucide-react";
+import { CanAccess, useTranslate } from "ra-core";
 import { Link, matchPath, useLocation } from "react-router";
+import { LocalesMenuButton } from "@/components/admin/locales-menu-button";
 import { RefreshButton } from "@/components/admin/refresh-button";
 import { ThemeModeToggle } from "@/components/admin/theme-mode-toggle";
 import { UserMenu } from "@/components/admin/user-menu";
@@ -12,12 +13,15 @@ import { useConfigurationContext } from "../root/ConfigurationContext";
 const Header = () => {
   const { darkModeLogo, lightModeLogo, title } = useConfigurationContext();
   const location = useLocation();
+  const translate = useTranslate();
 
   let currentPath: string | boolean = "/";
   if (matchPath("/", location.pathname)) {
     currentPath = "/";
   } else if (matchPath("/contacts/*", location.pathname)) {
     currentPath = "/contacts";
+  } else if (matchPath("/board/*", location.pathname)) {
+    currentPath = "/board";
   } else if (matchPath("/companies/*", location.pathname)) {
     currentPath = "/companies";
   } else if (matchPath("/deals/*", location.pathname)) {
@@ -50,34 +54,41 @@ const Header = () => {
             <div>
               <nav className="flex">
                 <NavigationTab
-                  label="Dashboard"
+                  label={translate("crm.nav.dashboard")}
                   to="/"
                   isActive={currentPath === "/"}
                 />
                 <NavigationTab
-                  label="Contacts"
+                  label={translate("crm.nav.contacts")}
                   to="/contacts"
                   isActive={currentPath === "/contacts"}
                 />
                 <NavigationTab
-                  label="Companies"
+                  label={translate("crm.nav.board")}
+                  to="/board"
+                  isActive={currentPath === "/board"}
+                />
+                <NavigationTab
+                  label={translate("crm.nav.companies")}
                   to="/companies"
                   isActive={currentPath === "/companies"}
                 />
                 <NavigationTab
-                  label="Deals"
+                  label={translate("crm.nav.deals")}
                   to="/deals"
                   isActive={currentPath === "/deals"}
                 />
               </nav>
             </div>
             <div className="flex items-center">
+              <LocalesMenuButton />
               <ThemeModeToggle />
               <RefreshButton />
               <UserMenu>
                 <ConfigurationMenu />
                 <CanAccess resource="sales" action="list">
                   <UsersMenu />
+                  <OrganizationMenu />
                 </CanAccess>
               </UserMenu>
             </div>
@@ -111,10 +122,23 @@ const NavigationTab = ({
 
 const UsersMenu = () => {
   const { onClose } = useUserMenu() ?? {};
+  const translate = useTranslate();
   return (
     <DropdownMenuItem asChild onClick={onClose}>
       <Link to="/sales" className="flex items-center gap-2">
-        <User /> Users
+        <User /> {translate("crm.nav.users")}
+      </Link>
+    </DropdownMenuItem>
+  );
+};
+
+const OrganizationMenu = () => {
+  const { onClose } = useUserMenu() ?? {};
+  const translate = useTranslate();
+  return (
+    <DropdownMenuItem asChild onClick={onClose}>
+      <Link to="/settings/organization" className="flex items-center gap-2">
+        <Building2 /> {translate("crm.nav.organization")}
       </Link>
     </DropdownMenuItem>
   );
@@ -122,11 +146,12 @@ const UsersMenu = () => {
 
 const ConfigurationMenu = () => {
   const { onClose } = useUserMenu() ?? {};
+  const translate = useTranslate();
   return (
     <DropdownMenuItem asChild onClick={onClose}>
       <Link to="/settings" className="flex items-center gap-2">
         <Settings />
-        My info
+        {translate("crm.nav.my_info")}
       </Link>
     </DropdownMenuItem>
   );

@@ -1,6 +1,11 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { MoreVertical } from "lucide-react";
-import { useDeleteWithUndoController, useNotify, useUpdate } from "ra-core";
+import {
+  useDeleteWithUndoController,
+  useNotify,
+  useTranslate,
+  useUpdate,
+} from "ra-core";
 import { useEffect, useState } from "react";
 import { ReferenceField } from "@/components/admin/reference-field";
 import { DateField } from "@/components/admin/date-field";
@@ -13,6 +18,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
+import { formatTime, postponedDueDate } from "../appointments/slots";
 import type { Contact, Task as TData } from "../types";
 import { TaskEdit } from "./TaskEdit";
 
@@ -24,6 +30,7 @@ export const Task = ({
   showContact?: boolean;
 }) => {
   const notify = useNotify();
+  const translate = useTranslate();
   const queryClient = useQueryClient();
 
   const [openEdit, setOpenEdit] = useState(false);
@@ -39,7 +46,7 @@ export const Task = ({
     redirect: false,
     mutationOptions: {
       onSuccess() {
-        notify("Task deleted successfully", { undoable: true });
+        notify("crm.tasks.deleted", { undoable: true });
       },
     },
   });
@@ -95,8 +102,19 @@ export const Task = ({
               {task.text}
             </div>
             <div className="text-sm text-muted-foreground">
-              due&nbsp;
+              {translate("crm.tasks.due")}&nbsp;
               <DateField source="due_date" record={task} />
+              {task.has_time && (
+                <>
+                  {" "}
+                  {formatTime(new Date(task.due_date))}
+                  {task.duration_minutes
+                    ? ` · ${translate("crm.schedule.minutes", {
+                        smart_count: task.duration_minutes,
+                      })}`
+                    : null}
+                </>
+              )}
               {showContact && (
                 <ReferenceField<TData, Contact>
                   source="contact_id"
@@ -139,15 +157,13 @@ export const Task = ({
                 update("tasks", {
                   id: task.id,
                   data: {
-                    due_date: new Date(Date.now() + 24 * 60 * 60 * 1000)
-                      .toISOString()
-                      .slice(0, 10),
+                    due_date: postponedDueDate(task, 1),
                   },
                   previousData: task,
                 });
               }}
             >
-              Postpone to tomorrow
+              {translate("crm.tasks.postpone_tomorrow")}
             </DropdownMenuItem>
             <DropdownMenuItem
               className="cursor-pointer"
@@ -155,21 +171,19 @@ export const Task = ({
                 update("tasks", {
                   id: task.id,
                   data: {
-                    due_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
-                      .toISOString()
-                      .slice(0, 10),
+                    due_date: postponedDueDate(task, 7),
                   },
                   previousData: task,
                 });
               }}
             >
-              Postpone to next week
+              {translate("crm.tasks.postpone_next_week")}
             </DropdownMenuItem>
             <DropdownMenuItem className="cursor-pointer" onClick={handleEdit}>
-              Edit
+              {translate("ra.action.edit")}
             </DropdownMenuItem>
             <DropdownMenuItem className="cursor-pointer" onClick={handleDelete}>
-              Delete
+              {translate("ra.action.delete")}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
